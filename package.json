@@ -11,5 +11,13 @@
     "search"
   ],
   "author": "Ethan Rutherford",
-  "license": "ISC"
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EthanRutherford/fast-fuzzy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/EthanRutherford/fast-fuzzy/issues"
+  },
+  "homepage": "https://github.com/EthanRutherford/fast-fuzzy#readme"
 }
