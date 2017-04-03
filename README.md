@@ -1,4 +1,4 @@
-# fast-fuzzy
+# fast-fuzzy [![Build Status](https://travis-ci.org/EthanRutherford/fast-fuzzy.svg?branch=master)](https://travis-ci.org/EthanRutherford/fast-fuzzy)
 Fast fuzzy search utility
 
 ### methodology
