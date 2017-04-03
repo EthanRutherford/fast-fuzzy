@@ -13,3 +13,12 @@ and trimming off any leading or trailing whitespace.
 * fuzzy - the core fuzzy search ranking function. returns a number between 0 and 1, with 1 being perfect match and 0 being perfect mismatch.
 * search - search function for one-off searches. returns a filtered and sorted copy of the original array.
 * Searcher - a class for searching the same set of candidates multiple times. caches normalization and key selection.
+
+### options
+`Searcher` and `search` both take an options object for configuring behavior.
+
+* keySelector - a function which selects the string to search (if candidates are objects). Default is `(_) => _`
+* threshold - a number from 0 to 1 representing the minimum score. Default is `.6`
+* ignoreCase - a boolean specifying whether or not to ignore case. Default is `true`
+* ignoreSymbols - a boolean specifying whether or not to ignore ``` `~!@#$%^&*()-=_+{}[]|\\;':",./<>? ```. Default is `true`
+* normalizeWhitespace - a boolean specifying whether or not to normalize and trim whitespace. Default is `true`
