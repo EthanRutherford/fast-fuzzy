@@ -1,9 +1,26 @@
 const nonWordRegex = /[`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+/g;
-const whiteSpaceRegex = /\s/g;
+const whitespaceRegex = /\s+/g;
 
-//normalize a string: comparisons should ignore case, non-word characters, and whitespace differences
-function normalize(string) {
-	return string.toLowerCase().replace(nonWordRegex, "").replace(whiteSpaceRegex, " ").trim();
+const defaultOptions = {
+	keySelector: (_) => _,
+	threshold: .6,
+	ignoreCase: true,
+	ignoreSymbols: true,
+	normalizeWhitespace: true,
+};
+
+//normalize a string according to the options passed in
+function normalize(string, options) {
+	if (options.ignoreCase) {
+		string = string.toLowerCase();
+	}
+	if (options.ignoreSymbols) {
+		string = string.replace(nonWordRegex, "");
+	}
+	if (options.normalizeWhitespace) {
+		string = string.replace(whitespaceRegex, " ").trim();
+	}
+	return string;
 }
 
 //the fuzzy scoring algorithm: a modification of levenshtein proposed by Peter H. Sellers
@@ -30,10 +47,10 @@ function sellers(term, candidate) {
 //the core match finder: returns a sorted, filtered list of matches
 //this does not normalize input, requiring users to normalize themselves
 //it also expects candidates in the form {item: any, key: string}
-function searchCore(term, candidates) {
+function searchCore(term, candidates, threshold) {
 	return candidates.map((candidate) => {
 		return {item: candidate.item, key: candidate.key, score: sellers(term, candidate.key)};
-	}).filter((candidate) => candidate.score >= .6).sort((a, b) => {
+	}).filter((candidate) => candidate.score >= threshold).sort((a, b) => {
 		if (a.score === b.score) return a.key.length - b.key.length;
 		return b.score - a.score;
 	}).map((candidate) => candidate.item);
@@ -41,28 +58,32 @@ function searchCore(term, candidates) {
 
 //transforms a list of candidates into objects with normalized search keys
 //the keySelector is used to pick a string from an object to search by
-function createSearchItems(items, keySelector = (_) => _) {
-	return items.map((item) => ({item, key: normalize(keySelector(item))}));
+function createSearchItems(items, options) {
+	return items.map((item) => ({item, key: normalize(options.keySelector(item), options)}));
 }
 
 //simple one-off search. Useful if you don't expect to use the same candidate list again
-function search(term, candidates, keySelector) {
-	return searchCore(normalize(term), createSearchItems(candidates, keySelector));
+function search(term, candidates, options) {
+	options = Object.assign({}, defaultOptions, options);
+	return searchCore(normalize(term, options), createSearchItems(candidates, options), options.threshold);
 }
 
 //class that improves performance of searching the same set multiple times
 //normalizes the strings and caches the result for future calls
 class Searcher {
-	constructor({candidates, keySelector}) {
-		this.keySelector = keySelector;
+	constructor(candidates, options) {
+		this.options = Object.assign({}, defaultOptions, options);
 		this.candidates = [];
 		this.add(...candidates);
 	}
 	add(...candidates) {
-		this.candidates.push(...createSearchItems(candidates, this.keySelector));
+		this.candidates.push(...createSearchItems(candidates, this.options));
 	}
-	search(term) {
-		return searchCore(normalize(term), this.candidates);
+	search(term, threshold) {
+		if (threshold == null) {
+			threshold = this.options.threshold;
+		}
+		return searchCore(normalize(term, this.options), this.candidates, threshold);
 	}
 }
 
