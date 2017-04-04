@@ -24,3 +24,5 @@ and trimming off any leading or trailing whitespace.
 * normalizeWhitespace - a boolean specifying whether or not to normalize and trim whitespace. Default is `true`
 * returnScores - a boolean specifying whether or not to return the scores. Default is `false`
 	* objects are returned in the form `{item, key, score}`
+
+`fuzzy` accepts a subset of these options (ignoreCase, ignoreSymbols, normalizeWhitespace) with the same defaults.
