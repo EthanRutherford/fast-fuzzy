@@ -109,6 +109,17 @@ describe("search", () => {
 				["a  b  c  d"]
 			);
 		});
+
+		it("should return scores when returnScores is set", () => {
+			assert.equal(
+				search("hello", ["hello"])[0].score,
+				null
+			);
+			assert.deepEqual(
+				search("hello", ["hello"], {returnScores: true})[0],
+				{item: "hello", key: "hello", score: 1}
+			);
+		});
 	});
 });
 
@@ -155,7 +166,7 @@ describe("Searcher", () => {
 		const searcher = new Searcher(["aaa", "aab", "abb", "bbb"], {threshold: .3});
 		assert.greater(
 			searcher.search("aaa").length,
-			searcher.search("aaa", .7).length
+			searcher.search("aaa", {threshold: .7}).length
 		);
 	});
 });

@@ -22,3 +22,5 @@ and trimming off any leading or trailing whitespace.
 * ignoreCase - a boolean specifying whether or not to ignore case. Default is `true`
 * ignoreSymbols - a boolean specifying whether or not to ignore ``` `~!@#$%^&*()-=_+{}[]|\\;':",./<>? ```. Default is `true`
 * normalizeWhitespace - a boolean specifying whether or not to normalize and trim whitespace. Default is `true`
+* returnScores - a boolean specifying whether or not to return the scores. Default is `false`
+	* objects are returned in the form `{item, key, score}`

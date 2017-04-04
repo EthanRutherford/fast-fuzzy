@@ -7,6 +7,7 @@ const defaultOptions = {
 	ignoreCase: true,
 	ignoreSymbols: true,
 	normalizeWhitespace: true,
+	returnScores: false,
 };
 
 //normalize a string according to the options passed in
@@ -47,13 +48,19 @@ function sellers(term, candidate) {
 //the core match finder: returns a sorted, filtered list of matches
 //this does not normalize input, requiring users to normalize themselves
 //it also expects candidates in the form {item: any, key: string}
-function searchCore(term, candidates, threshold) {
-	return candidates.map((candidate) => {
+function searchCore(term, candidates, options) {
+	let results = candidates.map((candidate) => {
 		return {item: candidate.item, key: candidate.key, score: sellers(term, candidate.key)};
-	}).filter((candidate) => candidate.score >= threshold).sort((a, b) => {
+	}).filter((candidate) => candidate.score >= options.threshold).sort((a, b) => {
 		if (a.score === b.score) return a.key.length - b.key.length;
 		return b.score - a.score;
-	}).map((candidate) => candidate.item);
+	});
+
+	if (!options.returnScores) {
+		results = results.map((candidate) => candidate.item);
+	}
+
+	return results;
 }
 
 //transforms a list of candidates into objects with normalized search keys
@@ -65,7 +72,7 @@ function createSearchItems(items, options) {
 //simple one-off search. Useful if you don't expect to use the same candidate list again
 function search(term, candidates, options) {
 	options = Object.assign({}, defaultOptions, options);
-	return searchCore(normalize(term, options), createSearchItems(candidates, options), options.threshold);
+	return searchCore(normalize(term, options), createSearchItems(candidates, options), options);
 }
 
 //class that improves performance of searching the same set multiple times
@@ -79,11 +86,9 @@ class Searcher {
 	add(...candidates) {
 		this.candidates.push(...createSearchItems(candidates, this.options));
 	}
-	search(term, threshold) {
-		if (threshold == null) {
-			threshold = this.options.threshold;
-		}
-		return searchCore(normalize(term, this.options), this.candidates, threshold);
+	search(term, options) {
+		options = Object.assign({}, this.options, options);
+		return searchCore(normalize(term, this.options), this.candidates, options);
 	}
 }
 
