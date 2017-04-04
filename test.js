@@ -1,6 +1,6 @@
 /* global describe, it */
 const assert = require("assert");
-const {fuzzy, search, Searcher} = require("./fuzzy");
+const {fuzzy, search, Searcher} = require("./src/fuzzy");
 
 assert.greater = function greater(actual, expected, message) {
 	if (actual <= expected) {
