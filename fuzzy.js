@@ -70,6 +70,14 @@ function createSearchItems(items, options) {
 	return items.map((item) => ({item, key: normalize(options.keySelector(item), options)}));
 }
 
+//wrapper for exporting sellers while allowing options to be passed in
+function fuzzy(term, candidate, options) {
+	options = Object.assign({}, defaultOptions, options);
+	term = normalize(term, options);
+	candidate = normalize(candidate, options);
+	return sellers(term, candidate);
+}
+
 //simple one-off search. Useful if you don't expect to use the same candidate list again
 function search(term, candidates, options) {
 	options = Object.assign({}, defaultOptions, options);
@@ -94,7 +102,7 @@ class Searcher {
 }
 
 module.exports = {
-	fuzzy: sellers,
+	fuzzy,
 	search,
 	Searcher,
 };

@@ -39,6 +39,13 @@ describe("fuzzy", () => {
 		assert.equal(fuzzy("hello", "pigs and stuff"), 0);
 		assert.equal(fuzzy("goodbye", "cars plus trucks"), 0);
 	});
+
+	it("should accept options", () => {
+		assert.notEqual(
+			fuzzy("hello", "HELLO"),
+			fuzzy("hello", "HELLO", {ignoreCase: false})
+		);
+	});
 });
 
 describe("search", () => {
