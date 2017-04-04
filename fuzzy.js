@@ -12,8 +12,9 @@ const defaultOptions = {
 
 //normalize a string according to the options passed in
 function normalize(string, options) {
+	string = string.normalize();
 	if (options.ignoreCase) {
-		string = string.toLowerCase();
+		string = string.toLocaleLowerCase();
 	}
 	if (options.ignoreSymbols) {
 		string = string.replace(nonWordRegex, "");
