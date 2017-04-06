@@ -14,57 +14,80 @@ assert.less = function greater(actual, expected, message) {
 	}
 };
 
-describe("fuzzy", () => {
-	it("should score exact matches perfectly", () => {
+describe("fuzzy", function() {
+	it("should score exact matches perfectly", function() {
 		assert.equal(fuzzy("hello", "hello"), 1);
 		assert.equal(fuzzy("goodbye", "goodbye"), 1);
 	});
 
-	it("should score exact substring matches perfectly", () => {
+	it("should score exact substring matches perfectly", function() {
 		assert.equal(fuzzy("hello", "hello there"), 1);
 		assert.equal(fuzzy("goodbye", "well, goodbye then"), 1);
 	});
 
-	it("should score close matches highly", () => {
+	it("should score close matches highly", function() {
 		assert.greater(fuzzy("help", "hello"), .5);
 		assert.greater(fuzzy("goodie", "goodbye"), .5);
 	});
 
-	it("should score poor matches poorly", () => {
+	it("should score poor matches poorly", function() {
 		assert.less(fuzzy("hello", "goodbye"), .5);
 		assert.less(fuzzy("goodbye", "hello"), .5);
 	});
 
-	it("should score non-matches minimally", () => {
+	it("should score non-matches minimally", function() {
 		assert.equal(fuzzy("hello", "pigs and stuff"), 0);
 		assert.equal(fuzzy("goodbye", "cars plus trucks"), 0);
 	});
 
-	it("should accept options", () => {
-		assert.notEqual(
-			fuzzy("hello", "HELLO"),
-			fuzzy("hello", "HELLO", {ignoreCase: false})
-		);
+	describe("options", function() {
+		it("should have different results when ignoreCase is set", function() {
+			assert.greater(
+				fuzzy("hello", "HELLO", {ignoreCase: true}),
+				fuzzy("hello", "HELLO", {ignoreCase: false})
+			);
+		});
+
+		it("should have different results when ignoreSymbols is set", function() {
+			assert.greater(
+				fuzzy("hello", "h..e..l..l..o", {ignoreSymbols: true}),
+				fuzzy("hello", "h..e..l..l..o", {ignoreSymbols: false})
+			);
+		});
+
+		it("should have different results when normalizeWhitespace is set", function() {
+			assert.greater(
+				fuzzy("a b c d", "a  b  c  d", {normalizeWhitespace: true}),
+				fuzzy("a b c d", "a  b  c  d", {normalizeWhitespace: false})
+			);
+		});
+
+		it("should have different results when useDamerau is set", function() {
+			assert.equal(fuzzy("abcd", "acbd", {useDamerau: false}), .5);
+			assert.equal(fuzzy("abcd", "acbd", {useDamerau: true}), .75);
+		});
 	});
 });
 
-describe("search", () => {
-	it("should filter out low matches", () => {
+describe("search", function() {
+	it("should filter out low matches", function() {
 		assert.deepEqual(
 			search("hello", ["goodbye"]),
 			[]
 		);
 	});
 
-	it("should have good relative ordering", () => {
+	it("should have good relative ordering", function() {
 		assert.deepEqual(
 			search("item", ["items", "iterator", "itemize", "item", "temperature"]),
 			["item", "items", "itemize", "iterator", "temperature"]
 		);
 	});
 
-	describe("options", () => {
-		it("should work with objects when keySelector is provided", () => {
+	describe("options", function() {
+		//here we describe the search specific options
+		//the other options were tested with fuzzy
+		it("should work with objects when keySelector is provided", function() {
 			assert.throws(() => {
 				search("hello", [{name: "hello"}]);
 			});
@@ -77,47 +100,14 @@ describe("search", () => {
 			);
 		});
 
-		it("should have more results when threshold is lower", () => {
+		it("should have more results when threshold is lower", function() {
 			assert.greater(
 				search("aaa", ["aaa", "aab", "abb", "bbb"], {threshold: .3}).length,
 				search("aaa", ["aaa", "aab", "abb", "bbb"], {threshold: .7}).length
 			);
 		});
 
-		it("should have different results when ignoreCase is set", () => {
-			assert.deepEqual(
-				search("hello", ["HELLO"], {ignoreCase: false}),
-				[]
-			);
-			assert.deepEqual(
-				search("hello", ["HELLO"], {ignoreCase: true}),
-				["HELLO"]
-			);
-		});
-
-		it("should have different results when ignoreSymbols is set", () => {
-			assert.deepEqual(
-				search("hello", ["h..e..l..l..o"], {ignoreSymbols: false}),
-				[]
-			);
-			assert.deepEqual(
-				search("hello", ["h..e..l..l..o"], {ignoreSymbols: true}),
-				["h..e..l..l..o"]
-			);
-		});
-
-		it("should have different results when normalizeWhitespace is set", () => {
-			assert.deepEqual(
-				search("a b c d", ["a  b  c  d"], {normalizeWhitespace: false}),
-				[]
-			);
-			assert.deepEqual(
-				search("a b c d", ["a  b  c  d"], {normalizeWhitespace: true}),
-				["a  b  c  d"]
-			);
-		});
-
-		it("should return scores when returnScores is set", () => {
+		it("should return scores when returnScores is set", function() {
 			assert.equal(
 				search("hello", ["hello"])[0].score,
 				null
@@ -130,8 +120,8 @@ describe("search", () => {
 	});
 });
 
-describe("Searcher", () => {
-	it("should return the same results as search", () => {
+describe("Searcher", function() {
+	it("should return the same results as search", function() {
 		const searcher = new Searcher(["hello", "help", "goodbye"]);
 		assert.deepEqual(
 			search("hello", ["hello", "help", "goodbye"]),
@@ -139,7 +129,7 @@ describe("Searcher", () => {
 		);
 	});
 
-	it("should work more than once", () => {
+	it("should work more than once", function() {
 		const searcher = new Searcher(["aaa", "aab", "abb", "bbb"]);
 		assert.deepEqual(
 			searcher.search("aaa"),
@@ -155,9 +145,9 @@ describe("Searcher", () => {
 		);
 	});
 
-	it("should have different behavior with different options", () => {
+	it("should have different behavior with different options", function() {
 		//we only really have to test one option, as the more strict
-		//tests are handled in search
+		//tests are handled in search/fuzzy
 		//this is really just making sure the options are set
 		assert.deepEqual(
 			new Searcher(["HELLO"], {ignoreCase: false}).search("hello"),
@@ -169,7 +159,7 @@ describe("Searcher", () => {
 		);
 	});
 
-	it("should allow overriding threshold", () => {
+	it("should allow overriding threshold", function() {
 		const searcher = new Searcher(["aaa", "aab", "abb", "bbb"], {threshold: .3});
 		assert.greater(
 			searcher.search("aaa").length,

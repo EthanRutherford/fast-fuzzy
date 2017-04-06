@@ -5,9 +5,11 @@ Fast fuzzy search utility
 fast-fuzzy is an on-line fuzzy searching utility that is pretty fast for moderate sized lists of candidates.
 The ranking algorithm is a modification of [levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)
 proposed by Peter H. Sellers ([paper](https://pdfs.semanticscholar.org/0517/aa6d420f66f74bd4b281e2ed0e2021f3d359.pdf)).
+We also use the [damerou-levenshtein distance](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance)
+as opposed to normal levenshtein in order to get better results.
 
 Inputs are normalized by taking the lowercase of a string, removing non-word characters, reducing all whitespace to single spaces,
-and trimming off any leading or trailing whitespace.
+and trimming off any leading or trailing whitespace, and calling string.normalize.
 
 ### exports
 * fuzzy - the core fuzzy search ranking function. returns a number between 0 and 1, with 1 being perfect match and 0 being perfect mismatch.
@@ -24,5 +26,6 @@ and trimming off any leading or trailing whitespace.
 * normalizeWhitespace - a boolean specifying whether or not to normalize and trim whitespace. Default is `true`
 * returnScores - a boolean specifying whether or not to return the scores. Default is `false`
 	* objects are returned in the form `{item, key, score}`
+* useDamerau - a boolean specifying whether or not to use the damerau-levenshtein distance. Default is `true`
 
-`fuzzy` accepts a subset of these options (ignoreCase, ignoreSymbols, normalizeWhitespace) with the same defaults.
+`fuzzy` accepts a subset of these options (ignoreCase, ignoreSymbols, normalizeWhitespace, useDamerau) with the same defaults.
