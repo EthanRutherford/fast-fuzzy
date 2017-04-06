@@ -51,6 +51,9 @@ function levenshteinSellers(term, candidate) {
 	return 1 - (Math.min(...rowA) / term.length);
 }
 
+//an implementation of the sellers algorithm using damerau-levenshtein as a base
+//has all the runtime characteristics of the above, but punishes transpositions less,
+//resulting in better tolerance to those types of typos
 function damerauLevenshteinSellers(term, candidate) {
 	let rowA;
 	let rowB = new Array(candidate.length + 1).fill(0);
