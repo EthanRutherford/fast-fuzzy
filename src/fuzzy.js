@@ -1,6 +1,7 @@
 const nonWordRegex = /[`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+/g;
 const whitespaceRegex = /\s+/g;
 
+//the default options, which will be used for any unset option
 const defaultOptions = {
 	keySelector: (_) => _,
 	threshold: .6,
@@ -30,6 +31,10 @@ function normalize(string, options) {
 //this essentially finds the substring of "candidate" with the minimum levenshtein distance from "term"
 //runtime complexity: O(mn) where m and n are the lengths of term and candidate, respectively
 function levenshteinSellers(term, candidate) {
+	if (term.length === 0) {
+		return 1;
+	}
+
 	let rowA = new Array(candidate.length + 1).fill(0);
 
 	for (let i = 0; i < term.length; i++) {
@@ -55,6 +60,10 @@ function levenshteinSellers(term, candidate) {
 //has all the runtime characteristics of the above, but punishes transpositions less,
 //resulting in better tolerance to those types of typos
 function damerauLevenshteinSellers(term, candidate) {
+	if (term.length === 0) {
+		return 1;
+	}
+
 	let rowA;
 	let rowB = new Array(candidate.length + 1).fill(0);
 

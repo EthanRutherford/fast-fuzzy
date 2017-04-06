@@ -40,6 +40,14 @@ describe("fuzzy", function() {
 		assert.equal(fuzzy("goodbye", "cars plus trucks"), 0);
 	});
 
+	it("should return perfect scores for empty search terms", function() {
+		assert.equal(fuzzy("", "anything"), 1);
+	});
+
+	it("should return minimum scores for empty candidates", function() {
+		assert.equal(fuzzy("nothing", ""), 0);
+	});
+
 	describe("options", function() {
 		it("should have different results when ignoreCase is set", function() {
 			assert.greater(
