@@ -8,6 +8,7 @@ const defaultOptions = {
 	ignoreSymbols: true,
 	normalizeWhitespace: true,
 	returnScores: false,
+	useDamerau: true,
 };
 
 //normalize a string according to the options passed in
@@ -28,7 +29,7 @@ function normalize(string, options) {
 //the fuzzy scoring algorithm: a modification of levenshtein proposed by Peter H. Sellers
 //this essentially finds the substring of "candidate" with the minimum levenshtein distance from "term"
 //runtime complexity: O(mn) where m and n are the lengths of term and candidate, respectively
-function sellers(term, candidate) {
+function levenshteinSellers(term, candidate) {
 	let rowA = new Array(candidate.length + 1).fill(0);
 
 	for (let i = 0; i < term.length; i++) {
@@ -37,7 +38,11 @@ function sellers(term, candidate) {
 
 		for (let j = 0; j < candidate.length; j++) {
 			const cost = term[i] === candidate[j] ? 0 : 1;
-			rowB[j + 1] = Math.min(rowB[j] + 1, rowA[j + 1] + 1, rowA[j] + cost);
+			let m;
+			let min = rowB[j] + 1; //insertion
+			if ((m = rowA[j + 1] + 1) < min) min = m; //deletion
+			if ((m = rowA[j] + cost) < min) min = m; //substitution
+			rowB[j + 1] = min;
 		}
 
 		rowA = rowB;
@@ -46,12 +51,38 @@ function sellers(term, candidate) {
 	return 1 - (Math.min(...rowA) / term.length);
 }
 
+function damerauLevenshteinSellers(term, candidate) {
+	let rowA;
+	let rowB = new Array(candidate.length + 1).fill(0);
+
+	for (let i = 0; i < term.length; i++) {
+		const rowC = [];
+		rowC[0] = i + 1;
+
+		for (let j = 0; j < candidate.length; j++) {
+			const cost = term[i] === candidate[j] ? 0 : 1;
+			let m;
+			let min = rowC[j] + 1; //insertion
+			if ((m = rowB[j + 1] + 1) < min) min = m; //deletion
+			if ((m = rowB[j] + cost) < min) min = m; //substitution
+			if (i > 0 && j > 0 && term[i] === candidate[j - 1] && term[i - 1] === candidate[j] && (m = rowA[j - 1] + cost < min)) min = m;
+			rowC[j + 1] = min;
+		}
+
+		rowA = rowB;
+		rowB = rowC;
+	}
+
+	return 1 - (Math.min(...rowB) / term.length);
+}
+
 //the core match finder: returns a sorted, filtered list of matches
 //this does not normalize input, requiring users to normalize themselves
 //it also expects candidates in the form {item: any, key: string}
 function searchCore(term, candidates, options) {
+	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
 	let results = candidates.map((candidate) => {
-		return {item: candidate.item, key: candidate.key, score: sellers(term, candidate.key)};
+		return {item: candidate.item, key: candidate.key, score: scoreMethod(term, candidate.key)};
 	}).filter((candidate) => candidate.score >= options.threshold).sort((a, b) => {
 		if (a.score === b.score) return a.key.length - b.key.length;
 		return b.score - a.score;
@@ -73,9 +104,10 @@ function createSearchItems(items, options) {
 //wrapper for exporting sellers while allowing options to be passed in
 function fuzzy(term, candidate, options) {
 	options = Object.assign({}, defaultOptions, options);
+	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
 	term = normalize(term, options);
 	candidate = normalize(candidate, options);
-	return sellers(term, candidate);
+	return scoreMethod(term, candidate);
 }
 
 //simple one-off search. Useful if you don't expect to use the same candidate list again
