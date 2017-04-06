@@ -96,7 +96,9 @@ function searchCore(term, candidates, options) {
 	let results = candidates.map((candidate) => {
 		return {item: candidate.item, key: candidate.key, score: scoreMethod(term, candidate.key)};
 	}).filter((candidate) => candidate.score >= options.threshold).sort((a, b) => {
-		if (a.score === b.score) return a.key.length - b.key.length;
+		if (a.score === b.score) {
+			return Math.abs(a.key.length - term.length) - Math.abs(b.key.length - term.length);
+		}
 		return b.score - a.score;
 	});
 
