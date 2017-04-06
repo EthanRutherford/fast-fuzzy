@@ -5,7 +5,7 @@ Fast fuzzy search utility
 fast-fuzzy is an on-line fuzzy searching utility that is pretty fast for moderate sized lists of candidates.
 The ranking algorithm is a modification of [levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)
 proposed by Peter H. Sellers ([paper](https://pdfs.semanticscholar.org/0517/aa6d420f66f74bd4b281e2ed0e2021f3d359.pdf)).
-We also use the [damerou-levenshtein distance](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance)
+We also use the [damerau-levenshtein distance](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance)
 as opposed to normal levenshtein in order to get better results.
 
 Inputs are normalized by taking the lowercase of a string, removing non-word characters, reducing all whitespace to single spaces,
