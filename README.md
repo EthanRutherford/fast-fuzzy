@@ -29,3 +29,40 @@ and trimming off any leading or trailing whitespace, and calling string.normaliz
 * useDamerau - a boolean specifying whether or not to use the damerau-levenshtein distance. Default is `true`
 
 `fuzzy` accepts a subset of these options (ignoreCase, ignoreSymbols, normalizeWhitespace, useDamerau) with the same defaults.
+
+### examples
+You can call `fuzzy` directly to get a match score
+
+```javascript
+const {fuzzy} = require("fast-fuzzy");
+
+fuzzy("hello", "hello world"); //returns 1
+fuzzy("word", "hello world"); //returns .75
+
+//pass in custom options
+fuzzy("hello world", "hello  world"); //returns 1
+fuzzy("hello world", "hello  world", {normalizeWhitespace: false}); //returns .90909090...
+```
+
+Use `search` to search a list of strings or objects
+```javascript
+const {search} = require("fast-fuzzy");
+
+search("abc", ["def", "bcd", "cde", "abc"]); //returns ["abc", "bcd"]
+
+//pass in a keySelector to search for objects
+search("abc", [{name: "def"}, {name: "bcd"}, {name: "cde"}, {name: "abc"}], {keySelector: (obj) => obj.name});
+//returns [{name: "abc"}, {name: "bcd"}]
+```
+
+Use `Searcher` in much the same way as `search`
+
+```javascript
+const {Searcher} = require("fast-fuzzy");
+
+const searcher = new Searcher(["def", "bcd", "cde", "abc"]);
+searcher.search("abc"); //returns ["abc", "bcd"]
+
+//options are passed in on construction
+const anotherSearcher = new Searcher([{name: "thing1"}, {name: "thing2"}], {keySelector: (obj) => obj.name});
+```
