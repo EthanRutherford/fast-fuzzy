@@ -77,13 +77,15 @@ function damerauLevenshteinSellers(term, candidate) {
 			let min = rowC[j] + 1; //insertion
 			if ((m = rowB[j + 1] + 1) < min) min = m; //deletion
 			if ((m = rowB[j] + cost) < min) min = m; //substitution
-			if (i > 0 && j > 0 && term[i] === candidate[j - 1] && term[i - 1] === candidate[j] && (m = rowA[j - 1] + cost < min)) min = m;
+			if (i > 0 && j > 0 && term[i] === candidate[j - 1] && term[i - 1] === candidate[j] && (m = rowA[j - 1] + cost) < min) min = m;
 			rowC[j + 1] = min;
 		}
 
 		rowA = rowB;
 		rowB = rowC;
 	}
+
+	console.log(rowB);
 
 	return 1 - (Math.min(...rowB) / term.length);
 }
