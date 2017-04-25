@@ -85,8 +85,6 @@ function damerauLevenshteinSellers(term, candidate) {
 		rowB = rowC;
 	}
 
-	console.log(rowB);
-
 	return 1 - (Math.min(...rowB) / term.length);
 }
 
