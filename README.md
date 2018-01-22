@@ -32,7 +32,7 @@ This causes matches which are closer to exact full string matches to be effectiv
 | `add` | add new candidates to the list | `(...candidates) => void` |
 | `search` | perform a search against the instance's candidates  |`(term, options?) => matches`* |
 
-\* allows overriding the `threshold`, `returnScores`, and `useDamerau` options
+\* allows overriding the `threshold`, `returnMatchData`, and `useDamerau` options
 
 ## options
 `Searcher` and `search` both take an options object for configuring behavior.
@@ -44,12 +44,14 @@ This causes matches which are closer to exact full string matches to be effectiv
 | ignoreCase | `Bool` | normalize case by calling `toLower` on input and pattern | `true`
 | ignoreSymbols | `Bool` | strip non-word symbols* from input | `true`
 | normalizeWhitespace | `Bool`| normalize and trim whitespace | `true`
-| returnScores | `Bool` | return scores (in the form `{item, key, score}`) | `false`
+| returnMatchData | `Bool` | return match data** | `false`
 | useDamerau | `Bool` | use damerau-levenshtein distance | `true`
 
 \*  `` `~!@#$%^&*()-=_+{}[]\|\;':",./<>? ``
 
-`fuzzy` accepts a subset of these options (ignoreCase, ignoreSymbols, normalizeWhitespace, useDamerau) with the same defaults.
+\*\* in the form `{item, key, score, match: {index, length}}`
+
+`fuzzy` accepts a subset of these options (excluding keySelector and threshold) with the same defaults.
 
 ## examples
 You can call `fuzzy` directly to get a match score for a single string
@@ -76,9 +78,15 @@ search("abc", ["def", "bcd", "cde", "abc"]); //returns ["abc", "bcd"]
 search("abc", [{name: "def"}, {name: "bcd"}, {name: "cde"}, {name: "abc"}], {keySelector: (obj) => obj.name});
 //returns [{name: "abc"}, {name: "bcd"}]
 
-//pass returnScores to receive the scores for each result
-search("abc", ["def", "bcd", "cde", "abc"], {returnScores: true});
-//returns [{item: "abc", key: "abc", score: 1}, {item: "bcd", key: "bcd", score: 0.6666666666666667}]
+//pass returnMatchData to receive the matchData for each result
+search("abc", ["def", "bcd", "cde", "abc"], {returnMatchData: true});
+/* returns [{
+    item: 'abc', key: 'abc', score: 1,
+    match: {index: 0, length: 3},
+}, { 
+    item: 'bcd', key: 'bcd', score: 0.6666666666666667,
+    match: {index: 0, length: 2},
+}] */
 ```
 
 Use `Searcher` in much the same way as `search`
@@ -93,6 +101,12 @@ searcher.search("abc"); //returns ["abc", "bcd"]
 const anotherSearcher = new Searcher([{name: "thing1"}, {name: "thing2"}], {keySelector: (obj) => obj.name});
 
 //some options can be overridden per call
-searcher.search("abc", {returnScores: true});
-//returns [{item: "abc", key: "abc", score: 1}, {item: "bcd", key: "bcd", score: 0.6666666666666667}]
+searcher.search("abc", {returnMatchData: true});
+/* returns [{
+    item: 'abc', key: 'abc', score: 1,
+    match: {index: 0, length: 3},
+}, { 
+    item: 'bcd', key: 'bcd', score: 0.6666666666666667,
+    match: {index: 0, length: 2},
+}] */
 ```

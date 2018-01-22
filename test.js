@@ -74,6 +74,16 @@ describe("fuzzy", function() {
 			assert.equal(fuzzy("abcd", "acbd", {useDamerau: false}), .5);
 			assert.equal(fuzzy("abcd", "acbd", {useDamerau: true}), .75);
 		});
+
+		it("should return match data when returnMatchData is set", function() {
+			assert.deepEqual(
+				fuzzy("abcd", "acbd", {returnMatchData: true}),
+				{
+					score: .75,
+					match: {index: 0, length: 4},
+				}
+			);
+		});
 	});
 });
 
@@ -115,14 +125,19 @@ describe("search", function() {
 			);
 		});
 
-		it("should return scores when returnScores is set", function() {
+		it("should return match data when returnMatchData is set", function() {
 			assert.equal(
 				search("hello", ["hello"])[0].score,
 				null
 			);
 			assert.deepEqual(
-				search("hello", ["hello"], {returnScores: true})[0],
-				{item: "hello", key: "hello", score: 1}
+				search("hello", ["hello"], {returnMatchData: true})[0],
+				{
+					item: "hello",
+					key: "hello",
+					score: 1,
+					match: {index: 0, length: 5},
+				}
 			);
 		});
 	});

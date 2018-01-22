@@ -8,7 +8,7 @@ const defaultOptions = {
 	ignoreCase: true,
 	ignoreSymbols: true,
 	normalizeWhitespace: true,
-	returnScores: false,
+	returnMatchData: false,
 	useDamerau: true,
 };
 
@@ -27,18 +27,50 @@ function normalize(string, options) {
 	return string;
 }
 
+//finds the minimum value of the last row from the levenshtein-sellers matrix
+//then walks back up the matrix to find the match index
+//runtime complexity: O(m + n) where m and n are the lengths of term and candidate, respectively
+function walkBack(rows) {
+	const lastRow = rows[rows.length - 1];
+	let minValue = lastRow[0];
+	let minIndex = 0;
+	for (let i = 1; i < lastRow.length; i++) {
+		const val = lastRow[i];
+
+		if (val < minValue) {
+			minValue = val;
+			minIndex = i;
+		}
+	}
+
+	let start = minIndex;
+	for (let i = rows.length - 2; i > 0; i--) {
+		//column 1 represents the first character, so break early if we reach 1
+		if (start === 1) {
+			break;
+		}
+
+		const row = rows[i];
+		start = row[start] < row[start - 1] ? start : start - 1;
+	}
+
+	return {start: start, end: minIndex, value: minValue};
+}
+
 //the fuzzy scoring algorithm: a modification of levenshtein proposed by Peter H. Sellers
 //this essentially finds the substring of "candidate" with the minimum levenshtein distance from "term"
 //runtime complexity: O(mn) where m and n are the lengths of term and candidate, respectively
 function levenshteinSellers(term, candidate) {
 	if (term.length === 0) {
-		return 1;
+		return {score: 1, match: {index: 0, length: 0}};
 	}
 
-	let rowA = new Array(candidate.length + 1).fill(0);
+	const rows = new Array(term.length + 1);
+	rows[0] = new Array(candidate.length + 1).fill(0);
 
 	for (let i = 0; i < term.length; i++) {
-		const rowB = [];
+		const rowA = rows[i];
+		const rowB = rows[i + 1] = [];
 		rowB[0] = i + 1;
 
 		for (let j = 0; j < candidate.length; j++) {
@@ -49,11 +81,17 @@ function levenshteinSellers(term, candidate) {
 			if ((m = rowA[j] + cost) < min) min = m; //substitution
 			rowB[j + 1] = min;
 		}
-
-		rowA = rowB;
 	}
 
-	return 1 - (Math.min(...rowA) / term.length);
+	const results = walkBack(rows);
+
+	return {
+		score: 1 - (results.value / term.length),
+		match: {
+			index: results.start - 1,
+			length: (results.end - results.start) + 1,
+		},
+	};
 }
 
 //an implementation of the sellers algorithm using damerau-levenshtein as a base
@@ -61,14 +99,16 @@ function levenshteinSellers(term, candidate) {
 //resulting in better tolerance to those types of typos
 function damerauLevenshteinSellers(term, candidate) {
 	if (term.length === 0) {
-		return 1;
+		return {score: 1, match: {index: 0, length: 0}};
 	}
 
-	let rowA;
-	let rowB = new Array(candidate.length + 1).fill(0);
+	const rows = new Array(term.length + 1);
+	rows[0] = new Array(candidate.length + 1).fill(0);
 
 	for (let i = 0; i < term.length; i++) {
-		const rowC = [];
+		const rowA = rows[i - 1];
+		const rowB = rows[i];
+		const rowC = rows[i + 1] = [];
 		rowC[0] = i + 1;
 
 		for (let j = 0; j < candidate.length; j++) {
@@ -80,12 +120,17 @@ function damerauLevenshteinSellers(term, candidate) {
 			if (i > 0 && j > 0 && term[i] === candidate[j - 1] && term[i - 1] === candidate[j] && (m = rowA[j - 1] + cost) < min) min = m;
 			rowC[j + 1] = min;
 		}
-
-		rowA = rowB;
-		rowB = rowC;
 	}
 
-	return 1 - (Math.min(...rowB) / term.length);
+	const results = walkBack(rows);
+
+	return {
+		score: 1 - (results.value / term.length),
+		match: {
+			index: results.start - 1,
+			length: (results.end - results.start) + 1,
+		},
+	};
 }
 
 //the core match finder: returns a sorted, filtered list of matches
@@ -93,8 +138,14 @@ function damerauLevenshteinSellers(term, candidate) {
 //it also expects candidates in the form {item: any, key: string}
 function searchCore(term, candidates, options) {
 	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
-	let results = candidates.map((candidate) => {
-		return {item: candidate.item, key: candidate.key, score: scoreMethod(term, candidate.key)};
+	const results = candidates.map((candidate) => {
+		const matchData = scoreMethod(term, candidate.key);
+		return {
+			item: candidate.item,
+			key: candidate.key,
+			score: matchData.score,
+			match: matchData.match,
+		};
 	}).filter((candidate) => candidate.score >= options.threshold).sort((a, b) => {
 		if (a.score === b.score) {
 			return Math.abs(a.key.length - term.length) - Math.abs(b.key.length - term.length);
@@ -102,11 +153,10 @@ function searchCore(term, candidates, options) {
 		return b.score - a.score;
 	});
 
-	if (!options.returnScores) {
-		results = results.map((candidate) => candidate.item);
-	}
-
-	return results;
+	return options.returnMatchData || options.returnScores ?
+		results :
+		results.map((candidate) => candidate.item)
+	;
 }
 
 //transforms a list of candidates into objects with normalized search keys
@@ -121,7 +171,8 @@ function fuzzy(term, candidate, options) {
 	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
 	term = normalize(term, options);
 	candidate = normalize(candidate, options);
-	return scoreMethod(term, candidate);
+	const result = scoreMethod(term, candidate);
+	return options.returnMatchData ? result : result.score;
 }
 
 //simple one-off search. Useful if you don't expect to use the same candidate list again
