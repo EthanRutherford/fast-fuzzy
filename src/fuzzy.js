@@ -215,9 +215,7 @@ function searchCore(term, candidates, options) {
 	const results = candidates.map((candidate) => {
 		const normalized = candidate.normalized;
 		const matchData = scoreMethod(term, normalized.normal);
-		const match = options.returnMatchData && denormalizeMatchPosition(
-			matchData.match, normalized.map,
-		);
+		const match = options.returnMatchData && denormalizeMatchPosition(matchData.match, normalized.map);
 		return {
 			item: candidate.item,
 			original: normalized.normal,
