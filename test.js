@@ -79,8 +79,24 @@ describe("fuzzy", function() {
 			assert.deepEqual(
 				fuzzy("abcd", "acbd", {returnMatchData: true}),
 				{
+					item: "acbd",
+					original: "acbd",
+					key: "acbd",
 					score: .75,
 					match: {index: 0, length: 4},
+				}
+			);
+		});
+
+		it("should map matches to their original positions", function() {
+			assert.deepEqual(
+				fuzzy("hello", "  h..e..l..l  ..o", {returnMatchData: true}),
+				{
+					item: "  h..e..l..l  ..o",
+					original: "  h..e..l..l  ..o",
+					key: "hell o",
+					score: .8,
+					match: {index: 2, length: 10},
 				}
 			);
 		});
@@ -134,6 +150,7 @@ describe("search", function() {
 				search("hello", ["hello"], {returnMatchData: true})[0],
 				{
 					item: "hello",
+					original: "hello",
 					key: "hello",
 					score: 1,
 					match: {index: 0, length: 5},

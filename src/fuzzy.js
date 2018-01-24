@@ -1,5 +1,6 @@
-const nonWordRegex = /[`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+/g;
-const whitespaceRegex = /\s+/g;
+const whitespaceRegex = /(\s+)()/g;
+const nonWordRegex = /()([`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+)/g;
+const bothRegex = /(\s+)|([`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+)/g;
 
 //the default options, which will be used for any unset option
 const defaultOptions = {
@@ -25,6 +26,79 @@ function normalize(string, options) {
 		string = string.replace(whitespaceRegex, " ").trim();
 	}
 	return string;
+}
+
+//return normalized string, with original and map included
+function normalizeWithMap(string, options) {
+	const original = string.normalize();
+	let normal = original;
+	if (options.ignoreCase) {
+		normal = normal.toLocaleLowerCase();
+	}
+
+	//track transformations
+	const map = [];
+	let regex;
+	if (options.normalizeWhitespace) {
+		const trimStart = normal.match(/^\s+/);
+		if (trimStart) {
+			map.push({index: 0, offset: trimStart[0].length});
+		}
+		normal = normal.trim();
+
+		if (options.ignoreSymbols) {
+			regex = bothRegex;
+		} else {
+			regex = whitespaceRegex;
+		}
+	} else if (options.ignoreSymbols) {
+		regex = nonWordRegex;
+	} else {
+		return {original, normal, map: []};
+	}
+
+	let lastInd = 0;
+	let built = "";
+	let match;
+	let prev = map[map.length - 1] || {index: -.1};
+	while ((match = regex.exec(normal))) {
+		let length = match[0].length;
+		built += normal.slice(lastInd, match.index);
+
+		lastInd = match.index + length;
+		if (match[1]) {
+			built += " ";
+			if (length === 1) continue;
+			length--;
+		}
+
+		const start = built.length;
+		if (prev.index === start) {
+			prev.offset += length;
+		} else {
+			map.push(prev = {index: start, offset: length});
+		}
+	}
+
+	return {original, normal: built + normal.slice(lastInd), map};
+}
+
+//translate a match to the original string
+function denormalizeMatchPosition(match, map) {
+	const start = match.index;
+	const end = match.index + match.length;
+	let i = 0;
+	while (i < map.length && map[i].index <= end) {
+		if (map[i].index <= start) {
+			match.index += map[i].offset;
+		} else {
+			match.length += map[i].offset;
+		}
+
+		i++;
+	}
+
+	return match;
 }
 
 //finds the minimum value of the last row from the levenshtein-sellers matrix
@@ -139,12 +213,17 @@ function damerauLevenshteinSellers(term, candidate) {
 function searchCore(term, candidates, options) {
 	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
 	const results = candidates.map((candidate) => {
-		const matchData = scoreMethod(term, candidate.key);
+		const normalized = candidate.normalized;
+		const matchData = scoreMethod(term, normalized.normal);
+		const match = options.returnMatchData && denormalizeMatchPosition(
+			matchData.match, normalized.map,
+		);
 		return {
 			item: candidate.item,
-			key: candidate.key,
+			original: normalized.normal,
+			key: normalized.normal,
 			score: matchData.score,
-			match: matchData.match,
+			match,
 		};
 	}).filter((candidate) => candidate.score >= options.threshold).sort((a, b) => {
 		if (a.score === b.score) {
@@ -162,7 +241,10 @@ function searchCore(term, candidates, options) {
 //transforms a list of candidates into objects with normalized search keys
 //the keySelector is used to pick a string from an object to search by
 function createSearchItems(items, options) {
-	return items.map((item) => ({item, key: normalize(options.keySelector(item), options)}));
+	return items.map((item) => ({
+		item,
+		normalized: normalizeWithMap(options.keySelector(item), options),
+	}));
 }
 
 //wrapper for exporting sellers while allowing options to be passed in
@@ -170,9 +252,15 @@ function fuzzy(term, candidate, options) {
 	options = Object.assign({}, defaultOptions, options);
 	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
 	term = normalize(term, options);
-	candidate = normalize(candidate, options);
-	const result = scoreMethod(term, candidate);
-	return options.returnMatchData ? result : result.score;
+	const normalized = normalizeWithMap(candidate, options);
+	const result = scoreMethod(term, normalized.normal);
+	return options.returnMatchData ? {
+		item: candidate,
+		original: normalized.original,
+		key: normalized.normal,
+		score: result.score,
+		match: denormalizeMatchPosition(result.match, normalized.map),
+	} : result.score;
 }
 
 //simple one-off search. Useful if you don't expect to use the same candidate list again

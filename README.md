@@ -49,7 +49,7 @@ This causes matches which are closer to exact full string matches to be effectiv
 
 \*  `` `~!@#$%^&*()-=_+{}[]\|\;':",./<>? ``
 
-\*\* in the form `{item, key, score, match: {index, length}}`
+\*\* in the form `{item, original, key, score, match: {index, length}}`
 
 `fuzzy` accepts a subset of these options (excluding keySelector and threshold) with the same defaults.
 
@@ -75,16 +75,20 @@ const {search} = require("fast-fuzzy");
 search("abc", ["def", "bcd", "cde", "abc"]); //returns ["abc", "bcd"]
 
 //pass in a keySelector to search for objects
-search("abc", [{name: "def"}, {name: "bcd"}, {name: "cde"}, {name: "abc"}], {keySelector: (obj) => obj.name});
+search(
+    "abc",
+    [{name: "def"}, {name: "bcd"}, {name: "cde"}, {name: "abc"}],
+    {keySelector: (obj) => obj.name},
+);
 //returns [{name: "abc"}, {name: "bcd"}]
 
 //pass returnMatchData to receive the matchData for each result
 search("abc", ["def", "bcd", "cde", "abc"], {returnMatchData: true});
 /* returns [{
-    item: 'abc', key: 'abc', score: 1,
+    item: 'abc', original: 'abc', key: 'abc', score: 1,
     match: {index: 0, length: 3},
 }, { 
-    item: 'bcd', key: 'bcd', score: 0.6666666666666667,
+    item: 'bcd', original: 'bcd', key: 'bcd', score: 0.6666666666666667,
     match: {index: 0, length: 2},
 }] */
 ```
@@ -98,15 +102,18 @@ const searcher = new Searcher(["def", "bcd", "cde", "abc"]);
 searcher.search("abc"); //returns ["abc", "bcd"]
 
 //options are passed in on construction
-const anotherSearcher = new Searcher([{name: "thing1"}, {name: "thing2"}], {keySelector: (obj) => obj.name});
+const anotherSearcher = new Searcher(
+    [{name: "thing1"}, {name: "thing2"}],
+    {keySelector: (obj) => obj.name},
+);
 
 //some options can be overridden per call
 searcher.search("abc", {returnMatchData: true});
 /* returns [{
-    item: 'abc', key: 'abc', score: 1,
+    item: 'abc', original: 'abc', key: 'abc', score: 1,
     match: {index: 0, length: 3},
 }, { 
-    item: 'bcd', key: 'bcd', score: 0.6666666666666667,
+    item: 'bcd', original: 'bcd', key: 'bcd', score: 0.6666666666666667,
     match: {index: 0, length: 2},
 }] */
 ```
