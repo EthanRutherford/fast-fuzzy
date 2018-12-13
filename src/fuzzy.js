@@ -217,7 +217,12 @@ function searchCore(term, candidates, options) {
 	const results = candidates.map((candidate) => {
 		const matches = candidate.normalized.map((item) => ({
 			...item,
-			...scoreMethod(term, item.normal),
+			// if the search term is sufficiently longer than the candidate, it's impossible to score > threshold
+			// skip any items for which this is true
+			...(item.normal.length / term.length < options.threshold ?
+				{score: 0, match: {}} :
+				scoreMethod(term, item.normal)
+			),
 		}));
 
 		const bestMatch = matches.reduce(
