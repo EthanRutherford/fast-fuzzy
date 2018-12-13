@@ -52,21 +52,21 @@ describe("fuzzy", function() {
 		it("should have different results when ignoreCase is set", function() {
 			assert.greater(
 				fuzzy("hello", "HELLO", {ignoreCase: true}),
-				fuzzy("hello", "HELLO", {ignoreCase: false})
+				fuzzy("hello", "HELLO", {ignoreCase: false}),
 			);
 		});
 
 		it("should have different results when ignoreSymbols is set", function() {
 			assert.greater(
 				fuzzy("hello", "h..e..l..l..o", {ignoreSymbols: true}),
-				fuzzy("hello", "h..e..l..l..o", {ignoreSymbols: false})
+				fuzzy("hello", "h..e..l..l..o", {ignoreSymbols: false}),
 			);
 		});
 
 		it("should have different results when normalizeWhitespace is set", function() {
 			assert.greater(
 				fuzzy("a b c d", "a  b  c  d", {normalizeWhitespace: true}),
-				fuzzy("a b c d", "a  b  c  d", {normalizeWhitespace: false})
+				fuzzy("a b c d", "a  b  c  d", {normalizeWhitespace: false}),
 			);
 		});
 
@@ -84,7 +84,7 @@ describe("fuzzy", function() {
 					key: "acbd",
 					score: .75,
 					match: {index: 0, length: 4},
-				}
+				},
 			);
 		});
 
@@ -97,7 +97,7 @@ describe("fuzzy", function() {
 					key: "hell o",
 					score: .8,
 					match: {index: 2, length: 10},
-				}
+				},
 			);
 		});
 	});
@@ -107,20 +107,20 @@ describe("search", function() {
 	it("should filter out low matches", function() {
 		assert.deepEqual(
 			search("hello", ["goodbye"]),
-			[]
+			[],
 		);
 	});
 
 	it("should have good relative ordering", function() {
 		assert.deepEqual(
 			search("item", ["items", "iterator", "itemize", "item", "temperature"]),
-			["item", "items", "itemize", "iterator", "temperature"]
+			["item", "items", "itemize", "iterator", "temperature"],
 		);
 	});
 
 	describe("options", function() {
-		//here we describe the search specific options
-		//the other options were tested with fuzzy
+		// here we describe the search specific options
+		// the other options were tested with fuzzy
 		it("should work with objects when keySelector is provided", function() {
 			assert.throws(() => {
 				search("hello", [{name: "hello"}]);
@@ -130,21 +130,42 @@ describe("search", function() {
 			});
 			assert.deepEqual(
 				search("hello", [{name: "hello"}], {keySelector: (item) => item.name}),
-				[{name: "hello"}]
+				[{name: "hello"}],
+			);
+		});
+
+		it("should handle searching multiple keys per object", function() {
+			assert.doesNotThrow(() => {
+				search(
+					"hello",
+					[{name: "hello", value: "world"}],
+					{keySelector: (item) => [item.name, item.value]},
+				);
+			});
+			assert.deepEqual(
+				search(
+					"hello",
+					[
+						{name: "hello", value: "world"},
+						{name: "world", value: "hello"},
+					],
+					{keySelector: (item) => [item.name, item.value]},
+				),
+				[{name: "hello", value: "world"}, {name: "world", value: "hello"}],
 			);
 		});
 
 		it("should have more results when threshold is lower", function() {
 			assert.greater(
 				search("aaa", ["aaa", "aab", "abb", "bbb"], {threshold: .3}).length,
-				search("aaa", ["aaa", "aab", "abb", "bbb"], {threshold: .7}).length
+				search("aaa", ["aaa", "aab", "abb", "bbb"], {threshold: .7}).length,
 			);
 		});
 
 		it("should return match data when returnMatchData is set", function() {
 			assert.equal(
 				search("hello", ["hello"])[0].score,
-				null
+				null,
 			);
 			assert.deepEqual(
 				search("hello", ["hello"], {returnMatchData: true})[0],
@@ -154,7 +175,7 @@ describe("search", function() {
 					key: "hello",
 					score: 1,
 					match: {index: 0, length: 5},
-				}
+				},
 			);
 		});
 	});
@@ -165,7 +186,7 @@ describe("Searcher", function() {
 		const searcher = new Searcher(["hello", "help", "goodbye"]);
 		assert.deepEqual(
 			search("hello", ["hello", "help", "goodbye"]),
-			searcher.search("hello")
+			searcher.search("hello"),
 		);
 	});
 
@@ -173,29 +194,29 @@ describe("Searcher", function() {
 		const searcher = new Searcher(["aaa", "aab", "abb", "bbb"]);
 		assert.deepEqual(
 			searcher.search("aaa"),
-			["aaa", "aab"]
+			["aaa", "aab"],
 		);
 		assert.deepEqual(
 			searcher.search("bbb"),
-			["bbb", "abb"]
+			["bbb", "abb"],
 		);
 		assert.deepEqual(
 			searcher.search("ccc"),
-			[]
+			[],
 		);
 	});
 
 	it("should have different behavior with different options", function() {
-		//we only really have to test one option, as the more strict
-		//tests are handled in search/fuzzy
-		//this is really just making sure the options are set
+		// we only really have to test one option, as the more strict
+		// tests are handled in search/fuzzy
+		// this is really just making sure the options are set
 		assert.deepEqual(
 			new Searcher(["HELLO"], {ignoreCase: false}).search("hello"),
-			[]
+			[],
 		);
 		assert.deepEqual(
 			new Searcher(["HELLO"], {ignoreCase: true}).search("hello"),
-			["HELLO"]
+			["HELLO"],
 		);
 	});
 
@@ -203,7 +224,7 @@ describe("Searcher", function() {
 		const searcher = new Searcher(["aaa", "aab", "abb", "bbb"], {threshold: .3});
 		assert.greater(
 			searcher.search("aaa").length,
-			searcher.search("aaa", {threshold: .7}).length
+			searcher.search("aaa", {threshold: .7}).length,
 		);
 	});
 });

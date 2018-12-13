@@ -2,7 +2,7 @@ const whitespaceRegex = /(\s+)()/g;
 const nonWordRegex = /()([`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+)/g;
 const bothRegex = /(\s+)|([`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+)/g;
 
-//the default options, which will be used for any unset option
+// the default options, which will be used for any unset option
 const defaultOptions = {
 	keySelector: (_) => _,
 	threshold: .6,
@@ -13,7 +13,9 @@ const defaultOptions = {
 	useDamerau: true,
 };
 
-//normalize a string according to the options passed in
+const arrayWrap = (item) => item instanceof Array ? item : [item];
+
+// normalize a string according to the options passed in
 function normalize(string, options) {
 	string = string.normalize();
 	if (options.ignoreCase) {
@@ -28,7 +30,7 @@ function normalize(string, options) {
 	return string;
 }
 
-//return normalized string, with original and map included
+// return normalized string, with original and map included
 function normalizeWithMap(string, options) {
 	const original = string.normalize();
 	let normal = original;
@@ -36,7 +38,7 @@ function normalizeWithMap(string, options) {
 		normal = normal.toLocaleLowerCase();
 	}
 
-	//track transformations
+	// track transformations
 	const map = [];
 	let regex;
 	if (options.normalizeWhitespace) {
@@ -83,7 +85,7 @@ function normalizeWithMap(string, options) {
 	return {original, normal: built + normal.slice(lastInd), map};
 }
 
-//translate a match to the original string
+// translate a match to the original string
 function denormalizeMatchPosition(match, map) {
 	const start = match.index;
 	const end = match.index + match.length;
@@ -101,9 +103,9 @@ function denormalizeMatchPosition(match, map) {
 	return match;
 }
 
-//finds the minimum value of the last row from the levenshtein-sellers matrix
-//then walks back up the matrix to find the match index
-//runtime complexity: O(m + n) where m and n are the lengths of term and candidate, respectively
+// finds the minimum value of the last row from the levenshtein-sellers matrix
+// then walks back up the matrix to find the match index
+// runtime complexity: O(m + n) where m and n are the lengths of term and candidate, respectively
 function walkBack(rows) {
 	const lastRow = rows[rows.length - 1];
 	let minValue = lastRow[0];
@@ -119,7 +121,7 @@ function walkBack(rows) {
 
 	let start = minIndex;
 	for (let i = rows.length - 2; i > 0; i--) {
-		//column 1 represents the first character, so break early if we reach 1
+		// column 1 represents the first character, so break early if we reach 1
 		if (start === 1) {
 			break;
 		}
@@ -131,9 +133,9 @@ function walkBack(rows) {
 	return {start: start, end: minIndex, value: minValue};
 }
 
-//the fuzzy scoring algorithm: a modification of levenshtein proposed by Peter H. Sellers
-//this essentially finds the substring of "candidate" with the minimum levenshtein distance from "term"
-//runtime complexity: O(mn) where m and n are the lengths of term and candidate, respectively
+// the fuzzy scoring algorithm: a modification of levenshtein proposed by Peter H. Sellers
+// this essentially finds the substring of "candidate" with the minimum levenshtein distance from "term"
+// runtime complexity: O(mn) where m and n are the lengths of term and candidate, respectively
 function levenshteinSellers(term, candidate) {
 	if (term.length === 0) {
 		return {score: 1, match: {index: 0, length: 0}};
@@ -150,9 +152,9 @@ function levenshteinSellers(term, candidate) {
 		for (let j = 0; j < candidate.length; j++) {
 			const cost = term[i] === candidate[j] ? 0 : 1;
 			let m;
-			let min = rowB[j] + 1; //insertion
-			if ((m = rowA[j + 1] + 1) < min) min = m; //deletion
-			if ((m = rowA[j] + cost) < min) min = m; //substitution
+			let min = rowB[j] + 1; // insertion
+			if ((m = rowA[j + 1] + 1) < min) min = m; // deletion
+			if ((m = rowA[j] + cost) < min) min = m; // substitution
 			rowB[j + 1] = min;
 		}
 	}
@@ -168,9 +170,9 @@ function levenshteinSellers(term, candidate) {
 	};
 }
 
-//an implementation of the sellers algorithm using damerau-levenshtein as a base
-//has all the runtime characteristics of the above, but punishes transpositions less,
-//resulting in better tolerance to those types of typos
+// an implementation of the sellers algorithm using damerau-levenshtein as a base
+// has all the runtime characteristics of the above, but punishes transpositions less,
+// resulting in better tolerance to those types of typos
 function damerauLevenshteinSellers(term, candidate) {
 	if (term.length === 0) {
 		return {score: 1, match: {index: 0, length: 0}};
@@ -188,9 +190,9 @@ function damerauLevenshteinSellers(term, candidate) {
 		for (let j = 0; j < candidate.length; j++) {
 			const cost = term[i] === candidate[j] ? 0 : 1;
 			let m;
-			let min = rowC[j] + 1; //insertion
-			if ((m = rowB[j + 1] + 1) < min) min = m; //deletion
-			if ((m = rowB[j] + cost) < min) min = m; //substitution
+			let min = rowC[j] + 1; // insertion
+			if ((m = rowB[j + 1] + 1) < min) min = m; // deletion
+			if ((m = rowB[j] + cost) < min) min = m; // substitution
 			if (i > 0 && j > 0 && term[i] === candidate[j - 1] && term[i - 1] === candidate[j] && (m = rowA[j - 1] + cost) < min) min = m;
 			rowC[j + 1] = min;
 		}
@@ -207,21 +209,27 @@ function damerauLevenshteinSellers(term, candidate) {
 	};
 }
 
-//the core match finder: returns a sorted, filtered list of matches
-//this does not normalize input, requiring users to normalize themselves
-//it also expects candidates in the form {item: any, key: string}
+// the core match finder: returns a sorted, filtered list of matches
+// this does not normalize input, requiring users to normalize themselves
+// it also expects candidates in the form {item: any, key: string}
 function searchCore(term, candidates, options) {
 	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
 	const results = candidates.map((candidate) => {
-		const normalized = candidate.normalized;
-		const matchData = scoreMethod(term, normalized.normal);
-		const match = options.returnMatchData && denormalizeMatchPosition(matchData.match, normalized.map);
+		const matches = candidate.normalized.map((item) => ({
+			...item,
+			...scoreMethod(term, item.normal),
+		}));
+
+		const bestMatch = matches.reduce(
+			(best, cur) => best.score > cur.score ? best : cur,
+		);
+
 		return {
 			item: candidate.item,
-			original: normalized.normal,
-			key: normalized.normal,
-			score: matchData.score,
-			match,
+			original: bestMatch.original,
+			key: bestMatch.normal,
+			score: bestMatch.score,
+			match: options.returnMatchData && denormalizeMatchPosition(bestMatch.match, bestMatch.map),
 		};
 	}).filter((candidate) => candidate.score >= options.threshold).sort((a, b) => {
 		if (a.score === b.score) {
@@ -236,16 +244,18 @@ function searchCore(term, candidates, options) {
 	;
 }
 
-//transforms a list of candidates into objects with normalized search keys
-//the keySelector is used to pick a string from an object to search by
+// transforms a list of candidates into objects with normalized search keys
+// the keySelector is used to pick a string from an object to search by
 function createSearchItems(items, options) {
 	return items.map((item) => ({
 		item,
-		normalized: normalizeWithMap(options.keySelector(item), options),
+		normalized: arrayWrap(options.keySelector(item)).map(
+			(key) => normalizeWithMap(key, options),
+		),
 	}));
 }
 
-//wrapper for exporting sellers while allowing options to be passed in
+// wrapper for exporting sellers while allowing options to be passed in
 function fuzzy(term, candidate, options) {
 	options = Object.assign({}, defaultOptions, options);
 	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
@@ -261,14 +271,14 @@ function fuzzy(term, candidate, options) {
 	} : result.score;
 }
 
-//simple one-off search. Useful if you don't expect to use the same candidate list again
+// simple one-off search. Useful if you don't expect to use the same candidate list again
 function search(term, candidates, options) {
 	options = Object.assign({}, defaultOptions, options);
 	return searchCore(normalize(term, options), createSearchItems(candidates, options), options);
 }
 
-//class that improves performance of searching the same set multiple times
-//normalizes the strings and caches the result for future calls
+// class that improves performance of searching the same set multiple times
+// normalizes the strings and caches the result for future calls
 class Searcher {
 	constructor(candidates, options) {
 		this.options = Object.assign({}, defaultOptions, options);

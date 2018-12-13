@@ -39,17 +39,19 @@ This causes matches which are closer to exact full string matches to be effectiv
 
 | option | type | description | default |
 | ------ | ---- | ----------- | ------- |
-| keySelector | `Function` | selects the string to search (if candidates are objects) | `(_) => _`
+| keySelector | `Function` | selects the string(s)* to search when candidates are objects | `(_) => _`
 | threshold | `Number` | the minimum score that can be returned | `.6`
 | ignoreCase | `Bool` | normalize case by calling `toLower` on input and pattern | `true`
-| ignoreSymbols | `Bool` | strip non-word symbols* from input | `true`
+| ignoreSymbols | `Bool` | strip non-word symbols** from input | `true`
 | normalizeWhitespace | `Bool`| normalize and trim whitespace | `true`
-| returnMatchData | `Bool` | return match data** | `false`
+| returnMatchData | `Bool` | return match data*** | `false`
 | useDamerau | `Bool` | use damerau-levenshtein distance | `true`
 
-\*  `` `~!@#$%^&*()-=_+{}[]\|\;':",./<>? ``
+\* if the keySelector returns an array, the candidate will take the score of the highest scoring key.
 
-\*\* in the form `{item, original, key, score, match: {index, length}}`
+\*\*  `` `~!@#$%^&*()-=_+{}[]\|\;':",./<>? ``
+
+\*\*\* in the form `{item, original, key, score, match: {index, length}}`
 
 `fuzzy` accepts a subset of these options (excluding keySelector and threshold) with the same defaults.
 
