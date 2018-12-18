@@ -219,15 +219,21 @@ function searchCore(term, candidates, options) {
 			...item,
 			// if the search term is sufficiently longer than the candidate, it's impossible to score > threshold
 			// skip any items for which this is true
-			...(item.normal.length / term.length < options.threshold ?
+			...item.normal.length / term.length < options.threshold ?
 				{score: 0, match: {}} :
 				scoreMethod(term, item.normal)
-			),
+			,
 		}));
 
-		const bestMatch = matches.reduce(
-			(best, cur) => best.score > cur.score ? best : cur,
-		);
+		const bestMatch = matches.reduce((best, cur) => {
+			if (best.score === cur.score) {
+				const curDiff = Math.abs(cur.normal.length - term.length);
+				const bestDiff = Math.abs(best.normal.length - term.length);
+				return curDiff < bestDiff ? cur : best;
+			}
+
+			return cur.score > best.score ? cur : best;
+		});
 
 		return {
 			item: candidate.item,
