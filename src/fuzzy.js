@@ -106,11 +106,16 @@ function denormalizeMatchPosition(match, map) {
 // finds the minimum value of the last row from the levenshtein-sellers matrix
 // then walks back up the matrix to find the match index
 // runtime complexity: O(m + n) where m and n are the lengths of term and candidate, respectively
-function walkBack(rows) {
+function walkBack(rows, length) {
+	// search term was empty string, return perfect score
+	if (rows.length === 1) {
+		return {score: 1, match: {index: 0, length: 0}};
+	}
+
 	const lastRow = rows[rows.length - 1];
 	let minValue = lastRow[0];
 	let minIndex = 0;
-	for (let i = 1; i < lastRow.length; i++) {
+	for (let i = 1; i < length; i++) {
 		const val = lastRow[i];
 
 		if (val < minValue) {
@@ -130,26 +135,27 @@ function walkBack(rows) {
 		start = row[start] < row[start - 1] ? start : start - 1;
 	}
 
-	return {start: start, end: minIndex, value: minValue};
+	return {
+		score: 1 - (minValue / (rows.length - 1)),
+		match: {
+			index: start - 1,
+			length: (minIndex - start) + 1,
+		},
+	};
 }
 
 // the fuzzy scoring algorithm: a modification of levenshtein proposed by Peter H. Sellers
 // this essentially finds the substring of "candidate" with the minimum levenshtein distance from "term"
 // runtime complexity: O(mn) where m and n are the lengths of term and candidate, respectively
-function levenshteinSellers(term, candidate) {
-	if (term.length === 0) {
-		return {score: 1, match: {index: 0, length: 0}};
-	}
-
-	const rows = new Array(term.length + 1);
-	rows[0] = new Array(candidate.length + 1).fill(0);
-
+function levenshteinSellers(term, candidate, rows, prefixLength = 0) {
 	for (let i = 0; i < term.length; i++) {
+		rows[i + 1] = rows[i + 1] || [];
+
 		const rowA = rows[i];
-		const rowB = rows[i + 1] = [];
+		const rowB = rows[i + 1];
 		rowB[0] = i + 1;
 
-		for (let j = 0; j < candidate.length; j++) {
+		for (let j = prefixLength; j < candidate.length; j++) {
 			const cost = term[i] === candidate[j] ? 0 : 1;
 			let m;
 			let min = rowB[j] + 1; // insertion
@@ -158,36 +164,21 @@ function levenshteinSellers(term, candidate) {
 			rowB[j + 1] = min;
 		}
 	}
-
-	const results = walkBack(rows);
-
-	return {
-		score: 1 - (results.value / term.length),
-		match: {
-			index: results.start - 1,
-			length: (results.end - results.start) + 1,
-		},
-	};
 }
 
 // an implementation of the sellers algorithm using damerau-levenshtein as a base
 // has all the runtime characteristics of the above, but punishes transpositions less,
 // resulting in better tolerance to those types of typos
-function damerauLevenshteinSellers(term, candidate) {
-	if (term.length === 0) {
-		return {score: 1, match: {index: 0, length: 0}};
-	}
-
-	const rows = new Array(term.length + 1);
-	rows[0] = new Array(candidate.length + 1).fill(0);
-
+function damerauLevenshteinSellers(term, candidate, rows, prefixLength = 0) {
 	for (let i = 0; i < term.length; i++) {
+		rows[i + 1] = rows[i + 1] || [];
+
 		const rowA = rows[i - 1];
 		const rowB = rows[i];
-		const rowC = rows[i + 1] = [];
+		const rowC = rows[i + 1];
 		rowC[0] = i + 1;
 
-		for (let j = 0; j < candidate.length; j++) {
+		for (let j = prefixLength; j < candidate.length; j++) {
 			const cost = term[i] === candidate[j] ? 0 : 1;
 			let m;
 			let min = rowC[j] + 1; // insertion
@@ -197,82 +188,156 @@ function damerauLevenshteinSellers(term, candidate) {
 			rowC[j + 1] = min;
 		}
 	}
+}
 
-	const results = walkBack(rows);
+// method for creating a trie from search candidates
+// using a trie can significantly improve search time
+function trieInsert(trie, string, item) {
+	let walker = trie;
+	for (const char of string) {
+		// add child node if not already present
+		if (walker.children[char] == null) {
+			walker.children[char] = {children: {}, candidates: [], depth: 0};
+		}
 
-	return {
-		score: 1 - (results.value / term.length),
-		match: {
-			index: results.start - 1,
-			length: (results.end - results.start) + 1,
-		},
-	};
+		// log max depth of this subtree
+		walker.depth = Math.max(walker.depth, string.length);
+
+		// step into child node
+		walker = walker.children[char];
+	}
+
+	// log max depth of this subtree
+	walker.depth = Math.max(walker.depth, string.length);
+
+	walker.candidates.push(item);
+}
+
+// transforms a list of candidates into objects with normalized search keys,
+// and inserts them into a trie
+// the keySelector is used to pick strings from an object to search by
+function createSearchTrie(trie, index, items, options) {
+	for (const item of items) {
+		const candidates = arrayWrap(options.keySelector(item)).map((key) => ({
+			index,
+			item,
+			normalized: normalizeWithMap(key, options),
+		}));
+
+		index++;
+
+		for (const candidate of candidates) {
+			trieInsert(trie, candidate.normalized.normal, candidate);
+		}
+	}
+}
+
+// scored item comparator
+function compareItems(a, b) {
+	const scoreDiff = b.score - a.score;
+	if (scoreDiff !== 0) {
+		return scoreDiff;
+	}
+
+	const lengthDiff = a.lengthDiff - b.lengthDiff;
+	if (lengthDiff !== 0) {
+		return lengthDiff;
+	}
+
+	return a.index - b.index;
+}
+
+// recursively walk the trie
+function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap, options) {
+	// build rows
+	scoreMethod(term, string, rows, string.length - 1);
+
+	// insert results
+	if (node.candidates.length > 0) {
+		const lengthDiff = Math.abs(string.length - term.length);
+		const match = walkBack(rows, string.length + 1);
+
+		if (match.score >= options.threshold) {
+			for (const candidate of node.candidates) {
+				const scoredItem = {
+					item: candidate.item,
+					original: candidate.normalized.original,
+					key: candidate.normalized.normal,
+					score: match.score,
+					match: options.returnMatchData && denormalizeMatchPosition(
+						match.match,
+						candidate.normalized.map,
+					),
+					index: candidate.index,
+					lengthDiff,
+				};
+
+				if (resultMap[candidate.index] == null) {
+					resultMap[candidate.index] = results.length;
+					results.push(scoredItem);
+				} else if (compareItems(scoredItem, results[resultMap[candidate.index]]) < 0) {
+					results[candidate.index] = scoredItem;
+				}
+			}
+		}
+	}
+
+	// recurse for children
+	for (const key in node.children) {
+		// if the search term is sufficiently longer than a candidate,
+		// it's impossible to score > threshold.
+		// skip any subtrees for which this is true.
+		const value = node.children[key];
+		if (value.depth / term.length >= options.threshold) {
+			searchRecurse(value, string + key, term, scoreMethod, rows, results, resultMap, options);
+		}
+	}
 }
 
 // the core match finder: returns a sorted, filtered list of matches
 // this does not normalize input, requiring users to normalize themselves
-// it also expects candidates in the form {item: any, key: string}
-function searchCore(term, candidates, options) {
+function searchCore(term, trie, options) {
 	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
-	const results = candidates.map((candidate) => {
-		const matches = candidate.normalized.map((item) => ({
-			...item,
-			// if the search term is sufficiently longer than the candidate, it's impossible to score > threshold
-			// skip any items for which this is true
-			...item.normal.length / term.length < options.threshold ?
-				{score: 0, match: {}} :
-				scoreMethod(term, item.normal)
-			,
-		}));
 
-		const bestMatch = matches.reduce((best, cur) => {
-			if (best.score === cur.score) {
-				const curDiff = Math.abs(cur.normal.length - term.length);
-				const bestDiff = Math.abs(best.normal.length - term.length);
-				return curDiff < bestDiff ? cur : best;
-			}
+	// walk the trie, scoring and storing the candidates
+	const resultMap = {};
+	const results = [];
 
-			return cur.score > best.score ? cur : best;
-		});
+	const rows = new Array(term.length + 1);
+	rows[0] = new Array(trie.depth + 1).fill(0);
 
-		return {
+	for (const key in trie.children) {
+		const value = trie.children[key];
+		searchRecurse(value, key, term, scoreMethod, rows, results, resultMap, options);
+	}
+
+	const sorted = results.sort(compareItems);
+
+	if (options.returnMatchData || options.returnScores) {
+		return sorted.map((candidate) => ({
 			item: candidate.item,
-			original: bestMatch.original,
-			key: bestMatch.normal,
-			score: bestMatch.score,
-			match: options.returnMatchData && denormalizeMatchPosition(bestMatch.match, bestMatch.map),
-		};
-	}).filter((candidate) => candidate.score >= options.threshold).sort((a, b) => {
-		if (a.score === b.score) {
-			return Math.abs(a.key.length - term.length) - Math.abs(b.key.length - term.length);
-		}
-		return b.score - a.score;
-	});
+			original: candidate.original,
+			key: candidate.key,
+			score: candidate.score,
+			match: candidate.match,
+		}));
+	}
 
-	return options.returnMatchData || options.returnScores ?
-		results :
-		results.map((candidate) => candidate.item)
-	;
-}
-
-// transforms a list of candidates into objects with normalized search keys
-// the keySelector is used to pick a string from an object to search by
-function createSearchItems(items, options) {
-	return items.map((item) => ({
-		item,
-		normalized: arrayWrap(options.keySelector(item)).map(
-			(key) => normalizeWithMap(key, options),
-		),
-	}));
+	return sorted.map((candidate) => candidate.item);
 }
 
 // wrapper for exporting sellers while allowing options to be passed in
 function fuzzy(term, candidate, options) {
-	options = Object.assign({}, defaultOptions, options);
+	options = {...defaultOptions, ...options};
 	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
 	term = normalize(term, options);
 	const normalized = normalizeWithMap(candidate, options);
-	const result = scoreMethod(term, normalized.normal);
+
+	const rows = new Array(term.length + 1);
+	rows[0] = new Array(candidate.length + 1).fill(0);
+	scoreMethod(term, normalized.normal, rows);
+	const result = walkBack(rows, candidate.length + 1);
+
 	return options.returnMatchData ? {
 		item: candidate,
 		original: normalized.original,
@@ -285,7 +350,9 @@ function fuzzy(term, candidate, options) {
 // simple one-off search. Useful if you don't expect to use the same candidate list again
 function search(term, candidates, options) {
 	options = Object.assign({}, defaultOptions, options);
-	return searchCore(normalize(term, options), createSearchItems(candidates, options), options);
+	const trie = {children: {}, depth: 0};
+	createSearchTrie(trie, 0, candidates, options);
+	return searchCore(normalize(term, options), trie, options);
 }
 
 // class that improves performance of searching the same set multiple times
@@ -293,15 +360,17 @@ function search(term, candidates, options) {
 class Searcher {
 	constructor(candidates, options) {
 		this.options = Object.assign({}, defaultOptions, options);
-		this.candidates = [];
-		this.add(...candidates);
+		this.trie = {children: {}, depth: 0};
+		createSearchTrie(this.trie, 0, candidates, this.options);
+		this.count = candidates.length;
 	}
 	add(...candidates) {
-		this.candidates.push(...createSearchItems(candidates, this.options));
+		createSearchTrie(this.trie, this.count, candidates, this.options);
+		this.count += candidates.length;
 	}
 	search(term, options) {
 		options = Object.assign({}, this.options, options);
-		return searchCore(normalize(term, this.options), this.candidates, options);
+		return searchCore(normalize(term, this.options), this.trie, options);
 	}
 }
 

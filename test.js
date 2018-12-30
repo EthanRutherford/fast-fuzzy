@@ -146,12 +146,12 @@ describe("search", function() {
 				search(
 					"hello",
 					[
-						{name: "hello", value: "world"},
+						{name: "hello", value: "jell"},
 						{name: "world", value: "hello"},
 					],
 					{keySelector: (item) => [item.name, item.value]},
 				),
-				[{name: "hello", value: "world"}, {name: "world", value: "hello"}],
+				[{name: "hello", value: "jell"}, {name: "world", value: "hello"}],
 			);
 		});
 
