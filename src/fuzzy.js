@@ -276,7 +276,7 @@ function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap
 					resultMap[candidate.index] = results.length;
 					results.push(scoredItem);
 				} else if (compareItems(scoredItem, results[resultMap[candidate.index]]) < 0) {
-					results[candidate.index] = scoredItem;
+					results[resultMap[candidate.index]] = scoredItem;
 				}
 			}
 		}
