@@ -4,7 +4,7 @@ const bothRegex = /(\s+)|([`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+)/g;
 
 // the default options, which will be used for any unset option
 const defaultOptions = {
-	keySelector: (_) => _,
+	keySelector: (s) => s,
 	threshold: .6,
 	ignoreCase: true,
 	ignoreSymbols: true,
@@ -85,31 +85,47 @@ function normalizeWithMap(string, options) {
 	return {original, normal: built + normal.slice(lastInd), map};
 }
 
-// translate a match to the original string
-function denormalizeMatchPosition(match, map) {
-	const start = match.index;
-	const end = match.index + match.length;
+// translates a match to the original string
+function denormalizeMatchPosition({index, length}, map) {
+	const start = index;
+	const end = index + length;
 	let i = 0;
 	while (i < map.length && map[i].index <= end) {
 		if (map[i].index <= start) {
-			match.index += map[i].offset;
+			index += map[i].offset;
 		} else {
-			match.length += map[i].offset;
+			length += map[i].offset;
 		}
 
 		i++;
 	}
 
-	return match;
+	return {index, length};
+}
+
+// walks back up the matrix to find the match index and length
+function walkBack(rows, scoreIndex) {
+	if (scoreIndex === 0) {
+		return {index: 0, length: 0};
+	}
+
+	let start = scoreIndex;
+	for (let i = rows.length - 2; i > 0 && start > 1; i--) {
+		const row = rows[i];
+		start = row[start] < row[start - 1] ? start : start - 1;
+	}
+
+	return {
+		index: start - 1,
+		length: (scoreIndex - start) + 1,
+	};
 }
 
 // finds the minimum value of the last row from the levenshtein-sellers matrix
-// then walks back up the matrix to find the match index
-// runtime complexity: O(m + n) where m and n are the lengths of term and candidate, respectively
-function walkBack(rows, length) {
+function getScore(rows, length) {
 	// search term was empty string, return perfect score
 	if (rows.length === 1) {
-		return {score: 1, match: {index: 0, length: 0}};
+		return {score: 1, scoreIndex: 0};
 	}
 
 	const lastRow = rows[rows.length - 1];
@@ -124,69 +140,58 @@ function walkBack(rows, length) {
 		}
 	}
 
-	let start = minIndex;
-	for (let i = rows.length - 2; i > 0; i--) {
-		// column 1 represents the first character, so break early if we reach 1
-		if (start === 1) {
-			break;
-		}
-
-		const row = rows[i];
-		start = row[start] < row[start - 1] ? start : start - 1;
-	}
-
 	return {
 		score: 1 - (minValue / (rows.length - 1)),
-		match: {
-			index: start - 1,
-			length: (minIndex - start) + 1,
-		},
+		scoreIndex: minIndex,
 	};
+}
+
+function initSellersRows(rowCount, columnCount) {
+	const rows = new Array(rowCount);
+	rows[0] = new Array(columnCount).fill(0);
+	for (let i = 1; i < rowCount; i++) {
+		rows[i] = new Array(columnCount);
+		rows[i][0] = i;
+	}
+
+	return rows;
 }
 
 // the fuzzy scoring algorithm: a modification of levenshtein proposed by Peter H. Sellers
 // this essentially finds the substring of "candidate" with the minimum levenshtein distance from "term"
 // runtime complexity: O(mn) where m and n are the lengths of term and candidate, respectively
-function levenshteinSellers(term, candidate, rows, prefixLength = 0) {
+// Note: this method only runs on a single column
+function levenshteinSellers(term, candidate, rows, j) {
 	for (let i = 0; i < term.length; i++) {
-		rows[i + 1] = rows[i + 1] || [];
-
 		const rowA = rows[i];
 		const rowB = rows[i + 1];
-		rowB[0] = i + 1;
 
-		for (let j = prefixLength; j < candidate.length; j++) {
-			const cost = term[i] === candidate[j] ? 0 : 1;
-			let m;
-			let min = rowB[j] + 1; // insertion
-			if ((m = rowA[j + 1] + 1) < min) min = m; // deletion
-			if ((m = rowA[j] + cost) < min) min = m; // substitution
-			rowB[j + 1] = min;
-		}
+		const cost = term[i] === candidate[j] ? 0 : 1;
+		let m;
+		let min = rowB[j] + 1; // insertion
+		if ((m = rowA[j + 1] + 1) < min) min = m; // deletion
+		if ((m = rowA[j] + cost) < min) min = m; // substitution
+		rowB[j + 1] = min;
 	}
 }
 
 // an implementation of the sellers algorithm using damerau-levenshtein as a base
 // has all the runtime characteristics of the above, but punishes transpositions less,
 // resulting in better tolerance to those types of typos
-function damerauLevenshteinSellers(term, candidate, rows, prefixLength = 0) {
+// Note: this method only runs on a single column
+function damerauLevenshteinSellers(term, candidate, rows, j) {
 	for (let i = 0; i < term.length; i++) {
-		rows[i + 1] = rows[i + 1] || [];
-
 		const rowA = rows[i - 1];
 		const rowB = rows[i];
 		const rowC = rows[i + 1];
-		rowC[0] = i + 1;
 
-		for (let j = prefixLength; j < candidate.length; j++) {
-			const cost = term[i] === candidate[j] ? 0 : 1;
-			let m;
-			let min = rowC[j] + 1; // insertion
-			if ((m = rowB[j + 1] + 1) < min) min = m; // deletion
-			if ((m = rowB[j] + cost) < min) min = m; // substitution
-			if (i > 0 && j > 0 && term[i] === candidate[j - 1] && term[i - 1] === candidate[j] && (m = rowA[j - 1] + cost) < min) min = m;
-			rowC[j + 1] = min;
-		}
+		const cost = term[i] === candidate[j] ? 0 : 1;
+		let m;
+		let min = rowC[j] + 1; // insertion
+		if ((m = rowB[j + 1] + 1) < min) min = m; // deletion
+		if ((m = rowB[j] + cost) < min) min = m; // substitution
+		if (i > 0 && j > 0 && term[i] === candidate[j - 1] && term[i - 1] === candidate[j] && (m = rowA[j - 1] + cost) < min) min = m;
+		rowC[j + 1] = min;
 	}
 }
 
@@ -255,17 +260,19 @@ function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap
 	// insert results
 	if (node.candidates.length > 0) {
 		const lengthDiff = Math.abs(string.length - term.length);
-		const match = walkBack(rows, string.length + 1);
+		const scoreResult = getScore(rows, string.length + 1);
 
-		if (match.score >= options.threshold) {
+		if (scoreResult.score >= options.threshold) {
+			const match = options.returnMatchData && walkBack(rows, scoreResult.scoreIndex);
+
 			for (const candidate of node.candidates) {
 				const scoredItem = {
 					item: candidate.item,
 					original: candidate.normalized.original,
 					key: candidate.normalized.normal,
-					score: match.score,
+					score: scoreResult.score,
 					match: options.returnMatchData && denormalizeMatchPosition(
-						match.match,
+						match,
 						candidate.normalized.map,
 					),
 					index: candidate.index,
@@ -303,9 +310,7 @@ function searchCore(term, trie, options) {
 	const resultMap = {};
 	const results = [];
 
-	const rows = new Array(term.length + 1);
-	rows[0] = new Array(trie.depth + 1).fill(0);
-
+	const rows = initSellersRows(term.length + 1, trie.depth + 1);
 	for (const key in trie.children) {
 		const value = trie.children[key];
 		searchRecurse(value, key, term, scoreMethod, rows, results, resultMap, options);
@@ -313,7 +318,7 @@ function searchCore(term, trie, options) {
 
 	const sorted = results.sort(compareItems);
 
-	if (options.returnMatchData || options.returnScores) {
+	if (options.returnMatchData) {
 		return sorted.map((candidate) => ({
 			item: candidate.item,
 			original: candidate.original,
@@ -333,18 +338,20 @@ function fuzzy(term, candidate, options) {
 	term = normalize(term, options);
 	const normalized = normalizeWithMap(candidate, options);
 
-	const rows = new Array(term.length + 1);
-	rows[0] = new Array(candidate.length + 1).fill(0);
-	scoreMethod(term, normalized.normal, rows);
-	const result = walkBack(rows, candidate.length + 1);
+	const rows = initSellersRows(term.length + 1, candidate.length + 1);
+	for (let j = 0; j < candidate.length; j++) {
+		scoreMethod(term, normalized.normal, rows, j);
+	}
+
+	const scoreResult = getScore(rows, candidate.length + 1);
 
 	return options.returnMatchData ? {
 		item: candidate,
 		original: normalized.original,
 		key: normalized.normal,
-		score: result.score,
-		match: denormalizeMatchPosition(result.match, normalized.map),
-	} : result.score;
+		score: scoreResult.score,
+		match: denormalizeMatchPosition(walkBack(rows, scoreResult.scoreIndex), normalized.map),
+	} : scoreResult.score;
 }
 
 // simple one-off search. Useful if you don't expect to use the same candidate list again
