@@ -1,6 +1,7 @@
-const whitespaceRegex = /(\s+)()/g;
-const nonWordRegex = /()([`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+)/g;
-const bothRegex = /(\s+)|([`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+)/g;
+const split = require("graphemesplit");
+
+const whitespaceRegex = /^\s+$/;
+const nonWordRegex = /^[`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+$/;
 
 // the default options, which will be used for any unset option
 const defaultOptions = {
@@ -15,92 +16,47 @@ const defaultOptions = {
 
 const arrayWrap = (item) => item instanceof Array ? item : [item];
 
-// normalize a string according to the options passed in
+// return normalized string, with map included
 function normalize(string, options) {
-	string = string.normalize();
-	if (options.ignoreCase) {
-		string = string.toLocaleLowerCase();
-	}
-	if (options.ignoreSymbols) {
-		string = string.replace(nonWordRegex, "");
-	}
-	if (options.normalizeWhitespace) {
-		string = string.replace(whitespaceRegex, " ").trim();
-	}
-	return string;
-}
-
-// return normalized string, with original and map included
-function normalizeWithMap(string, options) {
-	const original = string.normalize();
-	let normal = original;
-	if (options.ignoreCase) {
-		normal = normal.toLocaleLowerCase();
-	}
+	const lower = options.ignoreCase ? string.toLocaleLowerCase() : string;
 
 	// track transformations
+	const normal = [];
 	const map = [];
-	let regex;
-	if (options.normalizeWhitespace) {
-		const trimStart = normal.match(/^\s+/);
-		if (trimStart) {
-			map.push({index: 0, offset: trimStart[0].length});
+	let lastWasWhitespace = true;
+	let length = 0;
+	for (const grapheme of split(lower)) {
+		whitespaceRegex.lastIndex = 0;
+		nonWordRegex.lastIndex = 0;
+		if (options.normalizeWhitespace && whitespaceRegex.test(grapheme)) {
+			if (!lastWasWhitespace) {
+				normal.push(' ');
+				map.push(length);
+				lastWasWhitespace = true;
+			}
+		} else if (!(options.ignoreSymbols && nonWordRegex.test(grapheme))) {
+			normal.push(grapheme.normalize());
+			map.push(length);
+			lastWasWhitespace = false;
 		}
-		normal = normal.trim();
 
-		if (options.ignoreSymbols) {
-			regex = bothRegex;
-		} else {
-			regex = whitespaceRegex;
-		}
-	} else if (options.ignoreSymbols) {
-		regex = nonWordRegex;
-	} else {
-		return {original, normal, map: []};
+		length += grapheme.length;
 	}
 
-	let lastInd = 0;
-	let built = "";
-	let match;
-	let prev = map[map.length - 1] || {index: -.1};
-	while ((match = regex.exec(normal))) {
-		let length = match[0].length;
-		built += normal.slice(lastInd, match.index);
+	// add the end of the string
+	map.push(string.length);
 
-		lastInd = match.index + length;
-		if (match[1]) {
-			built += " ";
-			if (length === 1) continue;
-			length--;
-		}
-
-		const start = built.length;
-		if (prev.index === start) {
-			prev.offset += length;
-		} else {
-			map.push(prev = {index: start, offset: length});
-		}
+	while(normal[normal.length - 1] === " ") {
+		normal.pop();
+		map.pop();
 	}
 
-	return {original, normal: built + normal.slice(lastInd), map};
+	return {original: string, normal, map};
 }
 
 // translates a match to the original string
-function denormalizeMatchPosition({index, length}, map) {
-	const start = index;
-	const end = index + length;
-	let i = 0;
-	while (i < map.length && map[i].index <= end) {
-		if (map[i].index <= start) {
-			index += map[i].offset;
-		} else {
-			length += map[i].offset;
-		}
-
-		i++;
-	}
-
-	return {index, length};
+function denormalizeMatchPosition(match, map) {
+	return {index: map[match.start], length: map[match.end + 1] - map[match.start]};
 }
 
 // walks back up the matrix to find the match index and length
@@ -116,8 +72,8 @@ function walkBack(rows, scoreIndex) {
 	}
 
 	return {
-		index: start - 1,
-		length: (scoreIndex - start) + 1,
+		start: start - 1,
+		end: scoreIndex - 1,
 	};
 }
 
@@ -227,7 +183,7 @@ function createSearchTrie(trie, index, items, options) {
 			index,
 			keyIndex,
 			item,
-			normalized: normalizeWithMap(key, options),
+			normalized: normalize(key, options),
 		}));
 
 		index++;
@@ -274,13 +230,9 @@ function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap
 			for (const candidate of node.candidates) {
 				const scoredItem = {
 					item: candidate.item,
-					original: candidate.normalized.original,
-					key: candidate.normalized.normal,
+					normalized: candidate.normalized,
 					score: scoreResult.score,
-					match: options.returnMatchData && denormalizeMatchPosition(
-						match,
-						candidate.normalized.map,
-					),
+					match: match,
 					index: candidate.index,
 					keyIndex: candidate.keyIndex,
 					lengthDiff,
@@ -328,10 +280,10 @@ function searchCore(term, trie, options) {
 	if (options.returnMatchData) {
 		return sorted.map((candidate) => ({
 			item: candidate.item,
-			original: candidate.original,
-			key: candidate.key,
+			original: candidate.normalized.original,
+			key: candidate.normalized.normal.join(""),
 			score: candidate.score,
-			match: candidate.match,
+			match: denormalizeMatchPosition(candidate.match, candidate.normalized.map),
 		}));
 	}
 
@@ -342,8 +294,8 @@ function searchCore(term, trie, options) {
 function fuzzy(term, candidate, options) {
 	options = {...defaultOptions, ...options};
 	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
-	term = normalize(term, options);
-	const normalized = normalizeWithMap(candidate, options);
+	term = normalize(term, options).normal;
+	const normalized = normalize(candidate, options);
 
 	const rows = initSellersRows(term.length + 1, candidate.length + 1);
 	for (let j = 0; j < candidate.length; j++) {
@@ -355,7 +307,7 @@ function fuzzy(term, candidate, options) {
 	return options.returnMatchData ? {
 		item: candidate,
 		original: normalized.original,
-		key: normalized.normal,
+		key: normalized.normal.join(""),
 		score: scoreResult.score,
 		match: denormalizeMatchPosition(walkBack(rows, scoreResult.scoreIndex), normalized.map),
 	} : scoreResult.score;
@@ -366,7 +318,7 @@ function search(term, candidates, options) {
 	options = Object.assign({}, defaultOptions, options);
 	const trie = {children: {}, depth: 0};
 	createSearchTrie(trie, 0, candidates, options);
-	return searchCore(normalize(term, options), trie, options);
+	return searchCore(normalize(term, options).normal, trie, options);
 }
 
 // class that improves performance of searching the same set multiple times
@@ -384,7 +336,7 @@ class Searcher {
 	}
 	search(term, options) {
 		options = Object.assign({}, this.options, options);
-		return searchCore(normalize(term, this.options), this.trie, options);
+		return searchCore(normalize(term, this.options).normal, this.trie, options);
 	}
 }
 

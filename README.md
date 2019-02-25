@@ -8,10 +8,12 @@ proposed by Peter H. Sellers ([paper](https://pdfs.semanticscholar.org/0517/aa6d
 fast-fuzzy also uses the [damerau-levenshtein distance](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance)
 by default, which, compared to normal levenshtein, punishes transpositions less.
 
-Inputs are normalized before search. Normalization consists of standard utf8-normalization,
-followed by optionally taking the lowercase of a string,
+Inputs are normalized before search.
+Normalization consists of standard utf8-normalization,
+optionally taking the lowercase of a string,
 optionally removing non-word characters,
 and optionally flattening/trimming whitespace.
+Graphemes, such as conjoined emoji 👨‍👩‍👧‍, are treated as single characters.
 
 Inputs are scored from `0` to `1`, where a higher score indicates a closer match.
 When searching, results are returned in descending order of score.
@@ -24,13 +26,6 @@ avoids doing redundant work on candidates with common prefixes.
 Additionally, when a subtree of the trie can be determined to have no string long enough
 to score > threshold, the entire subtree is skipped entirely.
 This can significantly improve search times compared with a bruteforce search.
-
-## A note about normalization
-utf8 normalization is not optional, all strings will be normalized internally at minimum.
-Match positions, as a result, refer to positions *within the normalized string*. Match positions are, however,
-mapped back to the position in the string *before* whitespace and symbols are stripped out.
-Therefore, it is highly recommended that if one intends on using returned match data, you normalize the strings you intend to search by.
-This can be done by calling `string.normalize()`.
 
 ## exports
 | name | description | signature |
@@ -65,7 +60,8 @@ This can be done by calling `string.normalize()`.
 
 \*\*  `` `~!@#$%^&*()-=_+{}[]\|\;':",./<>? ``
 
-\*\*\* in the form `{item, original, key, score, match: {index, length}}`
+\*\*\* in the form `{item, original, key, score, match: {index, length}}`. 
+Match index and length are in terms of the original, non-normalized string.
 
 `fuzzy` accepts a subset of these options (excluding keySelector and threshold) with the same defaults.
 

@@ -1,6 +1,6 @@
 {
   "name": "fast-fuzzy",
-  "version": "1.8.3",
+  "version": "1.8.4",
   "description": "Fast and tiny fuzzy-search utility",
   "main": "lib/fuzzy.js",
   "scripts": {
@@ -13,7 +13,10 @@
     "fuzzy",
     "search",
     "damerau",
-    "levenshtein"
+    "levenshtein",
+    "unicode",
+    "partial",
+    "match"
   ],
   "author": "Ethan Rutherford",
   "license": "ISC",
@@ -30,5 +33,8 @@
     "@babel/core": "^7.2.0",
     "@babel/preset-env": "^7.2.0",
     "mocha": "^5.2.0"
+  },
+  "dependencies": {
+    "graphemesplit": "^2.0.3"
   }
 }

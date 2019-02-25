@@ -48,6 +48,18 @@ describe("fuzzy", function() {
 		assert.equal(fuzzy("nothing", ""), 0);
 	});
 
+	it("should handle unicode well", function() {
+		// unicode characters are normalized
+		assert.equal(fuzzy("\u212B", "\u0041\u030A"), 1);
+		// handles high and low surrogates as single characters
+		assert.equal(fuzzy("high", "h💩gh"), .75);
+		// handles combining marks as single characters
+		assert.equal(fuzzy("hi zalgo hello hello", "hi Z͑ͫ̓ͪ̂ͫ̽͏̴̙̤̞͉͚̯̞̠͍A̴̵̜̰͔ͫ͗͢L̠ͨͧͩ͘G̴̻͈͍͔̹̑͗̎̅͛́Ǫ̵̹̻̝̳͂̌̌͘ hello hello"), .75);
+
+		// handles graphemes such as hangul jamo and joined emoji as single characters
+		assert.equal(fuzzy("high", "h깍👨‍👩‍👧‍👦h"), .5);
+	});
+
 	describe("options", function() {
 		it("should have different results when ignoreCase is set", function() {
 			assert.greater(
