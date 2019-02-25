@@ -223,8 +223,9 @@ function trieInsert(trie, string, item) {
 // the keySelector is used to pick strings from an object to search by
 function createSearchTrie(trie, index, items, options) {
 	for (const item of items) {
-		const candidates = arrayWrap(options.keySelector(item)).map((key) => ({
+		const candidates = arrayWrap(options.keySelector(item)).map((key, keyIndex) => ({
 			index,
+			keyIndex,
 			item,
 			normalized: normalizeWithMap(key, options),
 		}));
@@ -242,6 +243,11 @@ function compareItems(a, b) {
 	const scoreDiff = b.score - a.score;
 	if (scoreDiff !== 0) {
 		return scoreDiff;
+	}
+
+	const keyIndexDiff = a.keyIndex - b.keyIndex;
+	if (keyIndexDiff !== 0) {
+		return keyIndexDiff;
 	}
 
 	const lengthDiff = a.lengthDiff - b.lengthDiff;
@@ -276,6 +282,7 @@ function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap
 						candidate.normalized.map,
 					),
 					index: candidate.index,
+					keyIndex: candidate.keyIndex,
 					lengthDiff,
 				};
 

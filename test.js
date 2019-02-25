@@ -134,6 +134,18 @@ describe("search", function() {
 			);
 		});
 
+		it("should have good ordering when using multiple keys per object", function() {
+			assert.deepEqual(
+				search("grin", [["grinning", "grin"], ["grin", "grinning"]]),
+				[["grin", "grinning"], ["grinning", "grin"]],
+			);
+
+			assert.deepEqual(
+				search("laugh", [["smile", "laughing"], ["laughing"], ["laugh"]]),
+				[["laugh"], ["laughing"], ["smile", "laughing"]],
+			);
+		});
+
 		it("should handle searching multiple keys per object", function() {
 			assert.doesNotThrow(() => {
 				search(
