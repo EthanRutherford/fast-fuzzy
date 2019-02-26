@@ -30,7 +30,7 @@ function normalize(string, options) {
 		nonWordRegex.lastIndex = 0;
 		if (options.normalizeWhitespace && whitespaceRegex.test(grapheme)) {
 			if (!lastWasWhitespace) {
-				normal.push(' ');
+				normal.push(" ");
 				map.push(length);
 				lastWasWhitespace = true;
 			}
@@ -46,7 +46,7 @@ function normalize(string, options) {
 	// add the end of the string
 	map.push(string.length);
 
-	while(normal[normal.length - 1] === " ") {
+	while (normal[normal.length - 1] === " ") {
 		normal.pop();
 		map.pop();
 	}

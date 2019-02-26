@@ -48,3 +48,4 @@ Temporary Items
 .vscode/
 node_modules/
 lib/
+compare.js
