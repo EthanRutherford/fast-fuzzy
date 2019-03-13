@@ -214,6 +214,26 @@ function compareItems(a, b) {
 	return a.index - b.index;
 }
 
+// dedupes and adds results to the results list/map
+function addResult(results, resultMap, candidate, score, match, lengthDiff) {
+	const scoredItem = {
+		item: candidate.item,
+		normalized: candidate.normalized,
+		score,
+		match,
+		index: candidate.index,
+		keyIndex: candidate.keyIndex,
+		lengthDiff,
+	};
+
+	if (resultMap[candidate.index] == null) {
+		resultMap[candidate.index] = results.length;
+		results.push(scoredItem);
+	} else if (compareItems(scoredItem, results[resultMap[candidate.index]]) < 0) {
+		results[resultMap[candidate.index]] = scoredItem;
+	}
+}
+
 // recursively walk the trie
 function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap, options) {
 	// build rows
@@ -228,22 +248,14 @@ function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap
 			const match = options.returnMatchData && walkBack(rows, scoreResult.scoreIndex);
 
 			for (const candidate of node.candidates) {
-				const scoredItem = {
-					item: candidate.item,
-					normalized: candidate.normalized,
-					score: scoreResult.score,
-					match: match,
-					index: candidate.index,
-					keyIndex: candidate.keyIndex,
+				addResult(
+					results,
+					resultMap,
+					candidate,
+					scoreResult.score,
+					match,
 					lengthDiff,
-				};
-
-				if (resultMap[candidate.index] == null) {
-					resultMap[candidate.index] = results.length;
-					results.push(scoredItem);
-				} else if (compareItems(scoredItem, results[resultMap[candidate.index]]) < 0) {
-					results[resultMap[candidate.index]] = scoredItem;
-				}
+				);
 			}
 		}
 	}
@@ -270,6 +282,18 @@ function searchCore(term, trie, options) {
 	const results = [];
 
 	const rows = initSellersRows(term.length + 1, trie.depth + 1);
+	if (options.threshold <= 0 && trie.candidates.length > 0) {
+		for (const candidate of trie.candidates) {
+			addResult(
+				results,
+				resultMap,
+				candidate,
+				0,
+				{index: 0, length: 0},
+				term.length,
+			);
+		}
+	}
 	for (const key in trie.children) {
 		const value = trie.children[key];
 		searchRecurse(value, key, term, scoreMethod, rows, results, resultMap, options);
@@ -316,7 +340,7 @@ function fuzzy(term, candidate, options) {
 // simple one-off search. Useful if you don't expect to use the same candidate list again
 function search(term, candidates, options) {
 	options = Object.assign({}, defaultOptions, options);
-	const trie = {children: {}, depth: 0};
+	const trie = {children: {}, candidates: [], depth: 0};
 	createSearchTrie(trie, 0, candidates, options);
 	return searchCore(normalize(term, options).normal, trie, options);
 }
@@ -326,7 +350,7 @@ function search(term, candidates, options) {
 class Searcher {
 	constructor(candidates, options) {
 		this.options = Object.assign({}, defaultOptions, options);
-		this.trie = {children: {}, depth: 0};
+		this.trie = {children: {}, candidates: [], depth: 0};
 		createSearchTrie(this.trie, 0, candidates, this.options);
 		this.count = candidates.length;
 	}

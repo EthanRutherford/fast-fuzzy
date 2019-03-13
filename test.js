@@ -130,6 +130,10 @@ describe("search", function() {
 		);
 	});
 
+	it("should handle empty candidates", function() {
+		assert.doesNotThrow(() => search("x", [""]));
+	});
+
 	describe("options", function() {
 		// here we describe the search specific options
 		// the other options were tested with fuzzy
