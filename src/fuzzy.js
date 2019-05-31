@@ -321,12 +321,12 @@ function fuzzy(term, candidate, options) {
 	term = normalize(term, options).normal;
 	const normalized = normalize(candidate, options);
 
-	const rows = initSellersRows(term.length + 1, candidate.length + 1);
-	for (let j = 0; j < candidate.length; j++) {
+	const rows = initSellersRows(term.length + 1, normalized.normal.length + 1);
+	for (let j = 0; j < normalized.normal.length; j++) {
 		scoreMethod(term, normalized.normal, rows, j);
 	}
 
-	const scoreResult = getScore(rows, candidate.length + 1);
+	const scoreResult = getScore(rows, normalized.normal.length + 1);
 
 	return options.returnMatchData ? {
 		item: candidate,

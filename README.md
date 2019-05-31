@@ -32,7 +32,11 @@ This can significantly improve search times compared with a bruteforce search.
 | ---- | --------- | ------------ |
 | `fuzzy` | fuzzy ranking algorithm; returns match strength | `(term, candidate, options?) => score` |
 | `search` | for one-off searches; returns a sorted array of matches | `(term, candidates, options?) => matches` |
-| `Searcher` | for searching the same set of candidates multiple times; caches normalization and key selection | `N/A`
+| `Searcher` | for searching the same set of candidates multiple times; caches the constructed trie* | `N/A` |
+
+\* it is recommended that you use a `Searcher` when searching the same set multiple times.
+`search` will create a new trie every time, and while this is relatively cheap, it can have an
+impact on responsiveness if you intend to update search results in real time, i.e. while typing.
 
 ### `Searcher` methods
 | name | description | signature |
