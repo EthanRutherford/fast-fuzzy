@@ -113,21 +113,26 @@ function initSellersRows(rowCount, columnCount) {
 	return rows;
 }
 
+// the content of the innermost loop of levenshtein
+function levCore(term, candidate, rows, i, j) {
+	const rowA = rows[i];
+	const rowB = rows[i + 1];
+
+	const cost = term[i] === candidate[j] ? 0 : 1;
+	let m;
+	let min = rowB[j] + 1; // insertion
+	if ((m = rowA[j + 1] + 1) < min) min = m; // deletion
+	if ((m = rowA[j] + cost) < min) min = m; // substitution
+	rowB[j + 1] = min;
+}
+
 // the fuzzy scoring algorithm: a modification of levenshtein proposed by Peter H. Sellers
 // this essentially finds the substring of "candidate" with the minimum levenshtein distance from "term"
 // runtime complexity: O(mn) where m and n are the lengths of term and candidate, respectively
 // Note: this method only runs on a single column
 function levenshteinSellers(term, candidate, rows, j) {
 	for (let i = 0; i < term.length; i++) {
-		const rowA = rows[i];
-		const rowB = rows[i + 1];
-
-		const cost = term[i] === candidate[j] ? 0 : 1;
-		let m;
-		let min = rowB[j] + 1; // insertion
-		if ((m = rowA[j + 1] + 1) < min) min = m; // deletion
-		if ((m = rowA[j] + cost) < min) min = m; // substitution
-		rowB[j + 1] = min;
+		levCore(term, candidate, rows, i, j);
 	}
 }
 
@@ -136,17 +141,35 @@ function levenshteinSellers(term, candidate, rows, j) {
 // resulting in better tolerance to those types of typos
 // Note: this method only runs on a single column
 function damerauLevenshteinSellers(term, candidate, rows, j) {
-	for (let i = 0; i < term.length; i++) {
+	// if j === 0, we can't check for transpositions,
+	// so use normal levenshtein instead
+	if (j === 0) {
+		levenshteinSellers(term, candidate, rows, j);
+		return;
+	}
+
+	// for i === 0, we also can't check for transpositions, so calculate
+	// the first row using normal levenshtein as well
+	if (term.length > 0) {
+		levCore(term, candidate, rows, 0, j);
+	}
+
+	for (let i = 1; i < term.length; i++) {
 		const rowA = rows[i - 1];
 		const rowB = rows[i];
 		const rowC = rows[i + 1];
 
 		const cost = term[i] === candidate[j] ? 0 : 1;
 		let m;
-		let min = rowC[j] + 1; // insertion
-		if ((m = rowB[j + 1] + 1) < min) min = m; // deletion
-		if ((m = rowB[j] + cost) < min) min = m; // substitution
-		if (i > 0 && j > 0 && term[i] === candidate[j - 1] && term[i - 1] === candidate[j] && (m = rowA[j - 1] + cost) < min) min = m;
+		// insertion
+		let min = rowC[j] + 1;
+		// deletion
+		if ((m = rowB[j + 1] + 1) < min) min = m;
+		// substitution
+		if ((m = rowB[j] + cost) < min) min = m;
+		// transposition
+		if (term[i] === candidate[j - 1] && term[i - 1] === candidate[j] && (m = rowA[j - 1] + cost) < min) min = m;
+
 		rowC[j + 1] = min;
 	}
 }
