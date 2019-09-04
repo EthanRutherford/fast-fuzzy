@@ -1,6 +1,6 @@
 {
   "name": "fast-fuzzy",
-  "version": "1.8.7",
+  "version": "1.8.8",
   "description": "Fast and tiny fuzzy-search utility",
   "main": "lib/fuzzy.js",
   "scripts": {

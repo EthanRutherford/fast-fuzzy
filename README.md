@@ -23,9 +23,9 @@ Ties in length difference are broken by insertion order.
 
 Lists of candidates are stored in a [trie](https://en.wikipedia.org/wiki/Trie) internally, which
 avoids doing redundant work on candidates with common prefixes.
-Additionally, when a subtree of the trie can be determined to have no string long enough
-to score > threshold, the entire subtree is skipped entirely.
-This can significantly improve search times compared with a bruteforce search.
+Additionally, when a subtree of the trie can be determined to have no string which could possibly
+score >= the threshold, the entire subtree is skipped.
+This significantly improves search times compared to a bruteforce search.
 
 ## exports
 | name | description | signature |

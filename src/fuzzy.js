@@ -178,21 +178,20 @@ function damerauLevenshteinSellers(term, candidate, rows, j) {
 // using a trie can significantly improve search time
 function trieInsert(trie, string, item) {
 	let walker = trie;
-	for (const char of string) {
+	for (let i = 0; i < string.length; i++) {
+		const char = string[i];
+
 		// add child node if not already present
 		if (walker.children[char] == null) {
 			walker.children[char] = {children: {}, candidates: [], depth: 0};
 		}
 
 		// log max depth of this subtree
-		walker.depth = Math.max(walker.depth, string.length);
+		walker.depth = Math.max(walker.depth, string.length - i);
 
 		// step into child node
 		walker = walker.children[char];
 	}
-
-	// log max depth of this subtree
-	walker.depth = Math.max(walker.depth, string.length);
 
 	walker.candidates.push(item);
 }
@@ -258,24 +257,32 @@ function addResult(results, resultMap, candidate, score, match, lengthDiff) {
 }
 
 // recursively walk the trie
-function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap, options) {
+function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap, options, minIndex, minValue) {
 	// build rows
 	scoreMethod(term, string, rows, string.length - 1);
 
+	// track best score and position
+	const lastIndex = string.length;
+	const lastValue = rows[rows.length - 1][lastIndex];
+	if (lastValue < minValue) {
+		minIndex = lastIndex;
+		minValue = lastValue;
+	}
+
 	// insert results
 	if (node.candidates.length > 0) {
-		const lengthDiff = Math.abs(string.length - term.length);
-		const scoreResult = getScore(rows, string.length + 1);
+		const score = 1 - (minValue / term.length);
 
-		if (scoreResult.score >= options.threshold) {
-			const match = options.returnMatchData && walkBack(rows, scoreResult.scoreIndex);
+		if (score >= options.threshold) {
+			const match = options.returnMatchData && walkBack(rows, minIndex);
+			const lengthDiff = Math.abs(string.length - term.length);
 
 			for (const candidate of node.candidates) {
 				addResult(
 					results,
 					resultMap,
 					candidate,
-					scoreResult.score,
+					score,
 					match,
 					lengthDiff,
 				);
@@ -285,12 +292,12 @@ function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap
 
 	// recurse for children
 	for (const key in node.children) {
-		// if the search term is sufficiently longer than a candidate,
-		// it's impossible to score > threshold.
-		// skip any subtrees for which this is true.
-		const value = node.children[key];
-		if (value.depth / term.length >= options.threshold) {
-			searchRecurse(value, string + key, term, scoreMethod, rows, results, resultMap, options);
+		const child = node.children[key];
+
+		// skip any subtrees for which it is impossible to score >= threshold
+		const bestPossibleValue = Math.min(minValue, lastValue - (child.depth + 1));
+		if (1 - (bestPossibleValue / term.length) >= options.threshold) {
+			searchRecurse(child, string + key, term, scoreMethod, rows, results, resultMap, options, minIndex, minValue);
 		}
 	}
 }
@@ -305,7 +312,7 @@ function searchCore(term, trie, options) {
 	const results = [];
 
 	const rows = initSellersRows(term.length + 1, trie.depth + 1);
-	if (options.threshold <= 0 && trie.candidates.length > 0) {
+	if (options.threshold <= 0 || term.length === 0) {
 		for (const candidate of trie.candidates) {
 			addResult(
 				results,
@@ -319,7 +326,7 @@ function searchCore(term, trie, options) {
 	}
 	for (const key in trie.children) {
 		const value = trie.children[key];
-		searchRecurse(value, key, term, scoreMethod, rows, results, resultMap, options);
+		searchRecurse(value, key, term, scoreMethod, rows, results, resultMap, options, 0, term.length);
 	}
 
 	const sorted = results.sort(compareItems);
