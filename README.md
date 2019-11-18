@@ -27,14 +27,17 @@ Additionally, when a subtree of the trie can be determined to have no string whi
 score >= the threshold, the entire subtree is skipped.
 This significantly improves search times compared to a bruteforce search.
 
+While the default options are to use Damerau and Sellers (transposition-friendly substring search),
+either of these options can be opted out of if the need arises.
+
 ## exports
 | name | description | signature |
 | ---- | --------- | ------------ |
 | `fuzzy` | fuzzy ranking algorithm; returns match strength | `(term, candidate, options?) => score` |
 | `search` | for one-off searches; returns a sorted array of matches | `(term, candidates, options?) => matches` |
-| `Searcher` | for searching the same set of candidates multiple times; caches the constructed trie* | `N/A` |
+| `Searcher` | for searching the same set of candidates multiple times; caches the constructed trie<sup>1</sup> | `N/A` |
 
-\* it is recommended that you use a `Searcher` when searching the same set multiple times.
+<sup>1</sup> it is recommended that you use a `Searcher` when searching the same set multiple times.
 `search` will create a new trie every time, and while this is relatively cheap, it can have an
 impact on responsiveness if you intend to update search results in real time, i.e. while typing.
 
@@ -43,29 +46,31 @@ impact on responsiveness if you intend to update search results in real time, i.
 | ---- | --------- | ------------ |
 | `constructor` | supply the options and initial list of candidates | `(candidates?, options?) => searcher` |
 | `add` | add new candidates to the list | `(...candidates) => void` |
-| `search` | perform a search against the instance's candidates  |`(term, options?) => matches`* |
+| `search` | perform a search against the instance's candidates  |`(term, options?) => matches`<sup>2</sup> |
 
-\* allows overriding the `threshold`, `returnMatchData`, and `useDamerau` options
+<sup>2</sup> allows overriding the `threshold`, `returnMatchData`, and `useDamerau` options
 
 ## options
 `Searcher` and `search` both take an options object for configuring behavior.
 
 | option | type | description | default |
 | ------ | ---- | ----------- | ------- |
-| keySelector | `Function` | selects the string(s)* to search when candidates are objects | `s => s`
+| keySelector | `Function` | selects the string(s)<sup>3</sup> to search when candidates are objects | `s => s`
 | threshold | `Number` | the minimum score that can be returned | `.6`
 | ignoreCase | `Bool` | normalize case by calling `toLower` on input and pattern | `true`
-| ignoreSymbols | `Bool` | strip non-word symbols** from input | `true`
+| ignoreSymbols | `Bool` | strip non-word symbols<sup>4</sup> from input | `true`
 | normalizeWhitespace | `Bool`| normalize and trim whitespace | `true`
-| returnMatchData | `Bool` | return match data*** | `false`
+| returnMatchData | `Bool` | return match data<sup>5</sup> | `false`
 | useDamerau | `Bool` | use damerau-levenshtein distance | `true`
+| useSellers | `Bool` | use the Sellers method for substring matching | `true`
 
-\* if the keySelector returns an array, the candidate will take the score of the highest scoring key.
+<sup>3</sup> if the keySelector returns an array, the candidate will take the score of the highest scoring key.
 
-\*\*  `` `~!@#$%^&*()-=_+{}[]\|\;':",./<>? ``
+<sup>4</sup> `` `~!@#$%^&*()-=_+{}[]\|\;':",./<>? ``
 
-\*\*\* in the form `{item, original, key, score, match: {index, length}}`. 
+<sup>5</sup> in the form `{item, original, key, score, match: {index, length}}`. 
 Match index and length are in terms of the original, non-normalized string.
+Also note that `match` will be `undefined` if `useSellers` is `false`.
 
 `fuzzy` accepts a subset of these options (excluding keySelector and threshold) with the same defaults.
 

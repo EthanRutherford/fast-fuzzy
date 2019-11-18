@@ -112,6 +112,13 @@ describe("fuzzy", function() {
 				},
 			);
 		});
+
+		it("should allow normal levenshtein", function() {
+			const options = {useSellers: false};
+			assert.equal(fuzzy("hello", "hello", options), 1);
+			assert.equal(fuzzy("hello", "he", options), .4);
+			assert.equal(fuzzy("he", "hello", options), .4);
+		});
 	});
 });
 
@@ -204,6 +211,25 @@ describe("search", function() {
 					score: 1,
 					match: {index: 0, length: 5},
 				},
+			);
+		});
+
+		it("should allow normal levenshtein", function() {
+			const options = {useSellers: false};
+			const candidates = ["items", "iterator", "itemize", "item", "temperature", "myitem"];
+			assert.deepEqual(
+				search("item", candidates, options),
+				["item", "items", "myitem"],
+			);
+
+			assert.deepEqual(
+				search("345", ["12345"], options),
+				["12345"],
+			);
+
+			assert.deepEqual(
+				search("12345", ["345"], options),
+				["345"],
 			);
 		});
 	});

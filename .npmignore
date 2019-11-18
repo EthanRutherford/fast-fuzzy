@@ -4,3 +4,4 @@ src/
 .travis.yml
 compare.js
 test.js
+levenshtein-short-circuit-formulation.md

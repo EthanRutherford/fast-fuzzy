@@ -12,8 +12,10 @@ const defaultOptions = {
 	normalizeWhitespace: true,
 	returnMatchData: false,
 	useDamerau: true,
+	useSellers: true,
 };
 
+const noop = () => {};
 const arrayWrap = (item) => item instanceof Array ? item : [item];
 
 // return normalized string, with map included
@@ -77,8 +79,19 @@ function walkBack(rows, scoreIndex) {
 	};
 }
 
-// finds the minimum value of the last row from the levenshtein-sellers matrix
-function getScore(rows, length) {
+const levUpdateScore = () => true;
+const sellersUpdateScore = (cur, min) => cur < min;
+
+function getLevScore(rows, length) {
+	const lastRow = rows[rows.length - 1];
+	const lastCell = lastRow[length - 1];
+	const scoreLength = Math.max(rows.length, length);
+	return {
+		score: 1 - (lastCell / (scoreLength - 1)),
+		scoreIndex: length - 1,
+	};
+}
+function getSellersScore(rows, length) {
 	// search term was empty string, return perfect score
 	if (rows.length === 1) {
 		return {score: 1, scoreIndex: 0};
@@ -102,6 +115,18 @@ function getScore(rows, length) {
 	};
 }
 
+function initLevRows(rowCount, columnCount) {
+	const rows = new Array(rowCount);
+	for (let i = 0; i < rowCount; i++) {
+		rows[i] = new Array(columnCount);
+		rows[i][0] = i;
+	}
+	for (let i = 0; i < columnCount; i++) {
+		rows[0][i] = i;
+	}
+
+	return rows;
+}
 function initSellersRows(rowCount, columnCount) {
 	const rows = new Array(rowCount);
 	rows[0] = new Array(columnCount).fill(0);
@@ -126,25 +151,22 @@ function levCore(term, candidate, rows, i, j) {
 	rowB[j + 1] = min;
 }
 
-// the fuzzy scoring algorithm: a modification of levenshtein proposed by Peter H. Sellers
-// this essentially finds the substring of "candidate" with the minimum levenshtein distance from "term"
 // runtime complexity: O(mn) where m and n are the lengths of term and candidate, respectively
 // Note: this method only runs on a single column
-function levenshteinSellers(term, candidate, rows, j) {
+function levenshtein(term, candidate, rows, j) {
 	for (let i = 0; i < term.length; i++) {
 		levCore(term, candidate, rows, i, j);
 	}
 }
 
-// an implementation of the sellers algorithm using damerau-levenshtein as a base
 // has all the runtime characteristics of the above, but punishes transpositions less,
 // resulting in better tolerance to those types of typos
 // Note: this method only runs on a single column
-function damerauLevenshteinSellers(term, candidate, rows, j) {
+function damerauLevenshtein(term, candidate, rows, j) {
 	// if j === 0, we can't check for transpositions,
 	// so use normal levenshtein instead
 	if (j === 0) {
-		levenshteinSellers(term, candidate, rows, j);
+		levenshtein(term, candidate, rows, j);
 		return;
 	}
 
@@ -256,25 +278,47 @@ function addResult(results, resultMap, candidate, score, match, lengthDiff) {
 	}
 }
 
+const getLevLength = Math.max;
+const getSellersLength = (termLength) => termLength;
+
+// skip any subtrees for which it is impossible to score >= threshold
+function levShouldContinue(node, string, term, threshold, sValue) {
+	// earliest point (length) at which sValue could return to 0
+	const p1 = string.length + sValue;
+	// point (length) at which string lengths would match
+	const p2 = Math.min(term.length, string.length + node.depth + 1);
+
+	// the best score possible is the string which minimizes the value
+	// max(sValue, strLenDiff), which is always halfway between p1 and p2
+	const length = Math.ceil((p1 + p2) / 2);
+	const bestPossibleValue = length - p2;
+	return 1 - (bestPossibleValue / length) >= threshold;
+}
+function sellersShouldContinue(node, _, term, threshold, sValue, lastValue) {
+	const bestPossibleValue = Math.min(sValue, lastValue - (node.depth + 1));
+	return 1 - (bestPossibleValue / term.length) >= threshold;
+}
+
 // recursively walk the trie
-function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap, options, minIndex, minValue) {
+function searchRecurse(node, string, term, scoreMethods, rows, results, resultMap, options, sIndex, sValue) {
 	// build rows
-	scoreMethod(term, string, rows, string.length - 1);
+	scoreMethods.score(term, string, rows, string.length - 1);
 
 	// track best score and position
 	const lastIndex = string.length;
 	const lastValue = rows[rows.length - 1][lastIndex];
-	if (lastValue < minValue) {
-		minIndex = lastIndex;
-		minValue = lastValue;
+	if (scoreMethods.shouldUpdateScore(lastValue, sValue)) {
+		sIndex = lastIndex;
+		sValue = lastValue;
 	}
 
 	// insert results
 	if (node.candidates.length > 0) {
-		const score = 1 - (minValue / term.length);
+		const length = scoreMethods.getLength(term.length, string.length);
+		const score = 1 - (sValue / length);
 
 		if (score >= options.threshold) {
-			const match = options.returnMatchData && walkBack(rows, minIndex);
+			const match = scoreMethods.walkBack(rows, sIndex);
 			const lengthDiff = Math.abs(string.length - term.length);
 
 			for (const candidate of node.candidates) {
@@ -294,10 +338,8 @@ function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap
 	for (const key in node.children) {
 		const child = node.children[key];
 
-		// skip any subtrees for which it is impossible to score >= threshold
-		const bestPossibleValue = Math.min(minValue, lastValue - (child.depth + 1));
-		if (1 - (bestPossibleValue / term.length) >= options.threshold) {
-			searchRecurse(child, string + key, term, scoreMethod, rows, results, resultMap, options, minIndex, minValue);
+		if (scoreMethods.shouldContinue(child, string, term, options.threshold, sValue, lastValue)) {
+			searchRecurse(child, string + key, term, scoreMethods, rows, results, resultMap, options, sIndex, sValue);
 		}
 	}
 }
@@ -305,13 +347,20 @@ function searchRecurse(node, string, term, scoreMethod, rows, results, resultMap
 // the core match finder: returns a sorted, filtered list of matches
 // this does not normalize input, requiring users to normalize themselves
 function searchCore(term, trie, options) {
-	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
+	const initMethod = options.useSellers ? initSellersRows : initLevRows;
+	const scoreMethods = {
+		score: options.useDamerau ? damerauLevenshtein : levenshtein,
+		getLength: options.useSellers ? getSellersLength : getLevLength,
+		shouldUpdateScore: options.useSellers ? sellersUpdateScore : levUpdateScore,
+		shouldContinue: options.useSellers ? sellersShouldContinue : levShouldContinue,
+		walkBack: options.returnMatchData && options.useSellers ? walkBack : noop,
+	};
 
 	// walk the trie, scoring and storing the candidates
 	const resultMap = {};
 	const results = [];
 
-	const rows = initSellersRows(term.length + 1, trie.depth + 1);
+	const rows = initMethod(term.length + 1, trie.depth + 1);
 	if (options.threshold <= 0 || term.length === 0) {
 		for (const candidate of trie.candidates) {
 			addResult(
@@ -326,18 +375,19 @@ function searchCore(term, trie, options) {
 	}
 	for (const key in trie.children) {
 		const value = trie.children[key];
-		searchRecurse(value, key, term, scoreMethod, rows, results, resultMap, options, 0, term.length);
+		searchRecurse(value, key, term, scoreMethods, rows, results, resultMap, options, 0, term.length);
 	}
 
 	const sorted = results.sort(compareItems);
 
 	if (options.returnMatchData) {
+		const denormalize = options.useSellers ? denormalizeMatchPosition : noop;
 		return sorted.map((candidate) => ({
 			item: candidate.item,
 			original: candidate.normalized.original,
 			key: candidate.normalized.normal.join(""),
 			score: candidate.score,
-			match: denormalizeMatchPosition(candidate.match, candidate.normalized.map),
+			match: denormalize(candidate.match, candidate.normalized.map),
 		}));
 	}
 
@@ -347,11 +397,13 @@ function searchCore(term, trie, options) {
 // wrapper for exporting sellers while allowing options to be passed in
 function fuzzy(term, candidate, options) {
 	options = {...defaultOptions, ...options};
-	const scoreMethod = options.useDamerau ? damerauLevenshteinSellers : levenshteinSellers;
+	const initMethod = options.useSellers ? initSellersRows : initLevRows;
+	const scoreMethod = options.useDamerau ? damerauLevenshtein : levenshtein;
+	const getScore = options.useSellers ? getSellersScore : getLevScore;
 	term = normalize(term, options).normal;
 	const normalized = normalize(candidate, options);
 
-	const rows = initSellersRows(term.length + 1, normalized.normal.length + 1);
+	const rows = initMethod(term.length + 1, normalized.normal.length + 1);
 	for (let j = 0; j < normalized.normal.length; j++) {
 		scoreMethod(term, normalized.normal, rows, j);
 	}
@@ -363,7 +415,10 @@ function fuzzy(term, candidate, options) {
 		original: normalized.original,
 		key: normalized.normal.join(""),
 		score: scoreResult.score,
-		match: denormalizeMatchPosition(walkBack(rows, scoreResult.scoreIndex), normalized.map),
+		match: options.useSellers ? denormalizeMatchPosition(
+			walkBack(rows, scoreResult.scoreIndex),
+			normalized.map,
+		) : noop(),
 	} : scoreResult.score;
 }
 
