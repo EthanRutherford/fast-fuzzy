@@ -141,6 +141,20 @@ describe("search", function() {
 		assert.doesNotThrow(() => search("x", [""]));
 	});
 
+	it("should handle unicode well", function() {
+		const options = {returnMatchData: true};
+		const tSearch = (a, b) => search(a, [b], options)[0].score;
+		// unicode characters are normalized
+		assert.equal(tSearch("\u212B", "\u0041\u030A"), 1);
+		// handles high and low surrogates as single characters
+		assert.equal(tSearch("high", "h💩gh"), .75);
+		// handles combining marks as single characters
+		assert.equal(tSearch("hi zalgo hello hello", "hi Z͑ͫ̓ͪ̂ͫ̽͏̴̙̤̞͉͚̯̞̠͍A̴̵̜̰͔ͫ͗͢L̠ͨͧͩ͘G̴̻͈͍͔̹̑͗̎̅͛́Ǫ̵̹̻̝̳͂̌̌͘ hello hello"), .75);
+
+		// handles graphemes such as hangul jamo and joined emoji as single characters
+		assert.equal(tSearch("abcde", "abc깍👨‍👩‍👧‍👦"), .6);
+	});
+
 	describe("options", function() {
 		// here we describe the search specific options
 		// the other options were tested with fuzzy

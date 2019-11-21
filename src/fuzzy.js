@@ -282,11 +282,11 @@ const getLevLength = Math.max;
 const getSellersLength = (termLength) => termLength;
 
 // skip any subtrees for which it is impossible to score >= threshold
-function levShouldContinue(node, string, term, threshold, sValue) {
+function levShouldContinue(node, pos, term, threshold, sValue) {
 	// earliest point (length) at which sValue could return to 0
-	const p1 = string.length + sValue;
+	const p1 = pos + sValue;
 	// point (length) at which string lengths would match
-	const p2 = Math.min(term.length, string.length + node.depth + 1);
+	const p2 = Math.min(term.length, pos + node.depth + 1);
 
 	// the best score possible is the string which minimizes the value
 	// max(sValue, strLenDiff), which is always halfway between p1 and p2
@@ -300,12 +300,12 @@ function sellersShouldContinue(node, _, term, threshold, sValue, lastValue) {
 }
 
 // recursively walk the trie
-function searchRecurse(node, string, term, scoreMethods, rows, results, resultMap, options, sIndex, sValue) {
+function searchRecurse(node, acc, len, term, scoreMethods, rows, results, resultMap, options, sIndex, sValue) {
 	// build rows
-	scoreMethods.score(term, string, rows, string.length - 1);
+	scoreMethods.score(term, acc, rows, len - 1);
 
 	// track best score and position
-	const lastIndex = string.length;
+	const lastIndex = len;
 	const lastValue = rows[rows.length - 1][lastIndex];
 	if (scoreMethods.shouldUpdateScore(lastValue, sValue)) {
 		sIndex = lastIndex;
@@ -314,12 +314,12 @@ function searchRecurse(node, string, term, scoreMethods, rows, results, resultMa
 
 	// insert results
 	if (node.candidates.length > 0) {
-		const length = scoreMethods.getLength(term.length, string.length);
+		const length = scoreMethods.getLength(term.length, len);
 		const score = 1 - (sValue / length);
 
 		if (score >= options.threshold) {
 			const match = scoreMethods.walkBack(rows, sIndex);
-			const lengthDiff = Math.abs(string.length - term.length);
+			const lengthDiff = Math.abs(len - term.length);
 
 			for (const candidate of node.candidates) {
 				addResult(
@@ -338,8 +338,9 @@ function searchRecurse(node, string, term, scoreMethods, rows, results, resultMa
 	for (const key in node.children) {
 		const child = node.children[key];
 
-		if (scoreMethods.shouldContinue(child, string, term, options.threshold, sValue, lastValue)) {
-			searchRecurse(child, string + key, term, scoreMethods, rows, results, resultMap, options, sIndex, sValue);
+		if (scoreMethods.shouldContinue(child, len, term, options.threshold, sValue, lastValue)) {
+			acc[len] = key;
+			searchRecurse(child, acc, len + 1, term, scoreMethods, rows, results, resultMap, options, sIndex, sValue);
 		}
 	}
 }
@@ -375,7 +376,9 @@ function searchCore(term, trie, options) {
 	}
 	for (const key in trie.children) {
 		const value = trie.children[key];
-		searchRecurse(value, key, term, scoreMethods, rows, results, resultMap, options, 0, term.length);
+		const acc = new Array(trie.depth);
+		acc[0] = key;
+		searchRecurse(value, acc, 1, term, scoreMethods, rows, results, resultMap, options, 0, term.length);
 	}
 
 	const sorted = results.sort(compareItems);
