@@ -8,6 +8,7 @@
   "scripts": {
     "compile": "rollup -c",
     "prepublishOnly": "npm run compile",
+    "pretest": "npm run compile",
     "test": "mocha test.js"
   },
   "keywords": [
