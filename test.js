@@ -1,6 +1,6 @@
 /* global describe, it */
 const assert = require("assert");
-const {fuzzy, search, Searcher} = require("./src/fuzzy");
+const {fuzzy, search, Searcher} = require("./lib/fuzzy.cjs");
 
 assert.greater = function greater(actual, expected, message) {
 	if (actual <= expected) {
