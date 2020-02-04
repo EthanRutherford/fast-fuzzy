@@ -1,4 +1,4 @@
-const split = require("graphemesplit");
+import split from "graphemesplit";
 
 const whitespaceRegex = /^\s+$/;
 const nonWordRegex = /^[`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+$/;
@@ -398,7 +398,7 @@ function searchCore(term, trie, options) {
 }
 
 // wrapper for exporting sellers while allowing options to be passed in
-function fuzzy(term, candidate, options) {
+export function fuzzy(term, candidate, options) {
 	options = {...defaultOptions, ...options};
 	const initMethod = options.useSellers ? initSellersRows : initLevRows;
 	const scoreMethod = options.useDamerau ? damerauLevenshtein : levenshtein;
@@ -426,7 +426,7 @@ function fuzzy(term, candidate, options) {
 }
 
 // simple one-off search. Useful if you don't expect to use the same candidate list again
-function search(term, candidates, options) {
+export function search(term, candidates, options) {
 	options = Object.assign({}, defaultOptions, options);
 	const trie = {children: {}, candidates: [], depth: 0};
 	createSearchTrie(trie, 0, candidates, options);
@@ -435,7 +435,7 @@ function search(term, candidates, options) {
 
 // class that improves performance of searching the same set multiple times
 // normalizes the strings and caches the result for future calls
-class Searcher {
+export class Searcher {
 	constructor(candidates, options) {
 		this.options = Object.assign({}, defaultOptions, options);
 		this.trie = {children: {}, candidates: [], depth: 0};
@@ -451,9 +451,3 @@ class Searcher {
 		return searchCore(normalize(term, this.options).normal, this.trie, options);
 	}
 }
-
-module.exports = {
-	fuzzy,
-	search,
-	Searcher,
-};
