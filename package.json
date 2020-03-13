@@ -1,6 +1,6 @@
 {
   "name": "fast-fuzzy",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "Fast and tiny fuzzy-search utility",
   "main": "lib/fuzzy.js",
   "scripts": {
@@ -28,13 +28,14 @@
     "url": "https://github.com/EthanRutherford/fast-fuzzy/issues"
   },
   "homepage": "https://github.com/EthanRutherford/fast-fuzzy#readme",
+  "browserslist": "> 1%, not ie > 0, not op_mini all",
   "devDependencies": {
-    "@babel/cli": "^7.5.5",
-    "@babel/core": "^7.5.5",
-    "@babel/preset-env": "^7.5.5",
+    "@babel/cli": "^7.8.4",
+    "@babel/core": "^7.8.7",
+    "@babel/preset-env": "^7.8.7",
     "mocha": "^5.2.0"
   },
   "dependencies": {
-    "graphemesplit": "^2.0.3"
+    "graphemesplit": "^2.3.0"
   }
 }

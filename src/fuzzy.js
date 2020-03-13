@@ -427,7 +427,7 @@ function fuzzy(term, candidate, options) {
 
 // simple one-off search. Useful if you don't expect to use the same candidate list again
 function search(term, candidates, options) {
-	options = Object.assign({}, defaultOptions, options);
+	options = {...defaultOptions, ...options};
 	const trie = {children: {}, candidates: [], depth: 0};
 	createSearchTrie(trie, 0, candidates, options);
 	return searchCore(normalize(term, options).normal, trie, options);
