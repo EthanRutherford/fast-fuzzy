@@ -1,11 +1,16 @@
 {
   "name": "fast-fuzzy",
-  "version": "1.9.2",
+  "version": "1.10.0",
   "description": "Fast and tiny fuzzy-search utility",
   "main": "lib/fuzzy.js",
+  "exports": {
+    "import": "./lib/fuzzy.mjs",
+    "require": "./lib/fuzzy.js"
+  },
   "scripts": {
-    "compile": "babel -d lib/ src/ --presets=@babel/preset-env",
+    "compile": "rollup -c",
     "prepublishOnly": "npm run compile",
+    "pretest": "npm run compile",
     "test": "mocha test.js"
   },
   "keywords": [
@@ -30,12 +35,16 @@
   "homepage": "https://github.com/EthanRutherford/fast-fuzzy#readme",
   "browserslist": "> 1%, not ie > 0, not op_mini all",
   "devDependencies": {
-    "@babel/cli": "^7.8.4",
-    "@babel/core": "^7.8.7",
-    "@babel/preset-env": "^7.8.7",
-    "mocha": "^5.2.0"
+    "@babel/cli": "^7.10.1",
+    "@babel/core": "^7.10.2",
+    "@babel/preset-env": "^7.10.2",
+    "@rutherford/eslint-config": "^1.0.3",
+    "eslint": "^7.2.0",
+    "mocha": "^8.0.1",
+    "rollup-plugin-babel": "^4.4.0"
   },
   "dependencies": {
-    "graphemesplit": "^2.3.0"
+    "graphemesplit": "^2.3.0",
+    "rollup": "^2.16.1"
   }
 }
