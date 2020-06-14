@@ -4,4 +4,7 @@ src/
 .travis.yml
 compare.js
 test.js
+.babelrc
+.eslintrc.json
+rollup.config.js
 levenshtein-short-circuit-formulation.md
