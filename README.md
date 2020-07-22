@@ -63,7 +63,7 @@ impact on responsiveness if you intend to update search results in real time, i.
 | returnMatchData | `Bool` | return match data<sup>5</sup> | `false`
 | useDamerau | `Bool` | use damerau-levenshtein distance | `true`
 | useSellers | `Bool` | use the Sellers method for substring matching | `true`
-| maxRecursions | `Number` | stop recursively walk the tree after an amount | `Infinity`
+| maxRecursions | `Number` | stop recursively walk the trie after an amount | `Infinity`
 
 <sup>3</sup> if the keySelector returns an array, the candidate will take the score of the highest scoring key.
 
