@@ -299,7 +299,7 @@ function sellersShouldContinue(node, _, term, threshold, sValue, lastValue) {
 	return 1 - (bestPossibleValue / term.length) >= threshold;
 }
 
-// recursively walk the treie
+// recursively walk the trie
 function searchRecurse(node, acc, len, term, scoreMethods, rows, results, resultMap, options, sIndex, sValue) {
 	if (options.maxRecursions && len > options.maxRecursions) return;
 	// build rows
