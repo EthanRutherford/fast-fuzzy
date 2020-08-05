@@ -299,48 +299,60 @@ function sellersShouldContinue(node, _, term, threshold, sValue, lastValue) {
 	return 1 - (bestPossibleValue / term.length) >= threshold;
 }
 
-// recursively walk the trie
-function searchRecurse(node, acc, len, term, scoreMethods, rows, results, resultMap, options, sIndex, sValue) {
-	// build rows
-	scoreMethods.score(term, acc, rows, len - 1);
-
-	// track best score and position
-	const lastIndex = len;
-	const lastValue = rows[rows.length - 1][lastIndex];
-	if (scoreMethods.shouldUpdateScore(lastValue, sValue)) {
-		sIndex = lastIndex;
-		sValue = lastValue;
+// (pseudo) recursively walk the trie
+function searchRecurse(trie, term, scoreMethods, rows, results, resultMap, options) {
+	const stack = [];
+	for (const key in trie.children) {
+		const node = trie.children[key];
+		stack.push([node, 1, key, 0, term.length]);
 	}
 
-	// insert results
-	if (node.candidates.length > 0) {
-		const length = scoreMethods.getLength(term.length, len);
-		const score = 1 - (sValue / length);
+	const acc = new Array(trie.depth);
+	while (stack.length !== 0) {
+		const [node, len, char, si, sv] = stack.pop();
+		acc[len - 1] = char;
 
-		if (score >= options.threshold) {
-			const match = scoreMethods.walkBack(rows, sIndex);
-			const lengthDiff = Math.abs(len - term.length);
+		// build rows
+		scoreMethods.score(term, acc, rows, len - 1);
 
-			for (const candidate of node.candidates) {
-				addResult(
-					results,
-					resultMap,
-					candidate,
-					score,
-					match,
-					lengthDiff,
-				);
+		// track best score and position
+		const lastIndex = len;
+		const lastValue = rows[rows.length - 1][lastIndex];
+		let sIndex = si, sValue = sv;
+		if (scoreMethods.shouldUpdateScore(lastValue, sv)) {
+			sIndex = lastIndex;
+			sValue = lastValue;
+		}
+
+		// insert results
+		if (node.candidates.length > 0) {
+			const length = scoreMethods.getLength(term.length, len);
+			const score = 1 - (sValue / length);
+
+			if (score >= options.threshold) {
+				const match = scoreMethods.walkBack(rows, sIndex);
+				const lengthDiff = Math.abs(len - term.length);
+
+				for (const candidate of node.candidates) {
+					addResult(
+						results,
+						resultMap,
+						candidate,
+						score,
+						match,
+						lengthDiff,
+					);
+				}
 			}
 		}
-	}
 
-	// recurse for children
-	for (const key in node.children) {
-		const child = node.children[key];
+		// recurse for children
+		for (const key in node.children) {
+			const child = node.children[key];
 
-		if (scoreMethods.shouldContinue(child, len, term, options.threshold, sValue, lastValue)) {
-			acc[len] = key;
-			searchRecurse(child, acc, len + 1, term, scoreMethods, rows, results, resultMap, options, sIndex, sValue);
+			if (scoreMethods.shouldContinue(child, len, term, options.threshold, sValue, lastValue)) {
+				stack.push([child, len + 1, key, sIndex, sValue]);
+			}
 		}
 	}
 }
@@ -374,12 +386,8 @@ function searchCore(term, trie, options) {
 			);
 		}
 	}
-	for (const key in trie.children) {
-		const value = trie.children[key];
-		const acc = new Array(trie.depth);
-		acc[0] = key;
-		searchRecurse(value, acc, 1, term, scoreMethods, rows, results, resultMap, options, 0, term.length);
-	}
+
+	searchRecurse(trie, term, scoreMethods, rows, results, resultMap, options);
 
 	const sorted = results.sort(compareItems);
 
