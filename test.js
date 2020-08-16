@@ -131,9 +131,16 @@ describe("search", function() {
 	});
 
 	it("should have good relative ordering", function() {
+		// test order by closeness of match
 		assert.deepEqual(
 			search("item", ["items", "iterator", "itemize", "item", "temperature"]),
 			["item", "items", "itemize", "iterator", "temperature"],
+		);
+
+		// test order by earliness of match
+		assert.deepEqual(
+			search("item", ["lineitem", "excitement", "itemize", "item"]),
+			["item", "itemize", "excitement", "lineitem"],
 		);
 	});
 

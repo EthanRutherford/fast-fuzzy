@@ -17,8 +17,9 @@ Graphemes, such as conjoined emoji 👨‍👩‍👧‍, are treated as single 
 
 Inputs are scored from `0` to `1`, where a higher score indicates a closer match.
 When searching, results are returned in descending order of score.
-Ties are broken by favoring the candidate whose length is closest to the length of the search term.
-This causes matches which are closer to exact full string matches to be effectively ranked higher in the case of a tie.
+Ties in score are broken by earliness of match (when using sellers substring match only).
+Further ties are broken by favoring the candidate whose length is closest to the length of the search term.
+This causes matches which are closer to exact full string matches to be effectively ranked higher.
 Ties in length difference are broken by insertion order.
 
 Lists of candidates are stored in a [trie](https://en.wikipedia.org/wiki/Trie) internally, which

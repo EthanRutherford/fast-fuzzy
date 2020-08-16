@@ -79,6 +79,11 @@ function walkBack(rows, scoreIndex) {
 	};
 }
 
+// walkback is a noop for non-sellers, but should still return an object
+function noopWalkback() {
+	return {start: 0, end: 0};
+}
+
 const levUpdateScore = () => true;
 const sellersUpdateScore = (cur, min) => cur < min;
 
@@ -245,14 +250,19 @@ function compareItems(a, b) {
 		return scoreDiff;
 	}
 
-	const keyIndexDiff = a.keyIndex - b.keyIndex;
-	if (keyIndexDiff !== 0) {
-		return keyIndexDiff;
+	const matchPosDiff = a.match.start - b.match.start;
+	if (matchPosDiff !== 0) {
+		return matchPosDiff;
 	}
 
 	const lengthDiff = a.lengthDiff - b.lengthDiff;
 	if (lengthDiff !== 0) {
 		return lengthDiff;
+	}
+
+	const keyIndexDiff = a.keyIndex - b.keyIndex;
+	if (keyIndexDiff !== 0) {
+		return keyIndexDiff;
 	}
 
 	return a.index - b.index;
@@ -330,7 +340,7 @@ function searchRecurse(trie, term, scoreMethods, rows, results, resultMap, optio
 			const score = 1 - (sValue / length);
 
 			if (score >= options.threshold) {
-				const match = scoreMethods.walkBack(rows, sIndex);
+				const match = walkBack(rows, sIndex);
 				const lengthDiff = Math.abs(len - term.length);
 
 				for (const candidate of node.candidates) {
@@ -366,7 +376,7 @@ function searchCore(term, trie, options) {
 		getLength: options.useSellers ? getSellersLength : getLevLength,
 		shouldUpdateScore: options.useSellers ? sellersUpdateScore : levUpdateScore,
 		shouldContinue: options.useSellers ? sellersShouldContinue : levShouldContinue,
-		walkBack: options.returnMatchData && options.useSellers ? walkBack : noop,
+		walkBack: options.useSellers ? walkBack : noopWalkback,
 	};
 
 	// walk the trie, scoring and storing the candidates
