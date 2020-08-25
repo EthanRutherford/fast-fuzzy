@@ -245,26 +245,31 @@ function createSearchTrie(trie, index, items, options) {
 
 // scored item comparator
 function compareItems(a, b) {
+	// highest priority is raw levenshtein score
 	const scoreDiff = b.score - a.score;
 	if (scoreDiff !== 0) {
 		return scoreDiff;
 	}
 
+	// ties are broken by earlier match positions
 	const matchPosDiff = a.match.start - b.match.start;
 	if (matchPosDiff !== 0) {
 		return matchPosDiff;
 	}
 
-	const lengthDiff = a.lengthDiff - b.lengthDiff;
-	if (lengthDiff !== 0) {
-		return lengthDiff;
-	}
-
+	// prioritize earlier keys
 	const keyIndexDiff = a.keyIndex - b.keyIndex;
 	if (keyIndexDiff !== 0) {
 		return keyIndexDiff;
 	}
 
+	// lastly, break ties by preferring the closer length match
+	const lengthDiff = a.lengthDiff - b.lengthDiff;
+	if (lengthDiff !== 0) {
+		return lengthDiff;
+	}
+
+	// if all else fails, resort to insertion order
 	return a.index - b.index;
 }
 
