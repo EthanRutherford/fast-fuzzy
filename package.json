@@ -1,6 +1,6 @@
 {
   "name": "fast-fuzzy",
-  "version": "1.10.6",
+  "version": "1.10.7",
   "description": "Fast and tiny fuzzy-search utility",
   "main": "lib/fuzzy.js",
   "exports": {
@@ -45,6 +45,6 @@
     "rollup-plugin-babel": "^4.4.0"
   },
   "dependencies": {
-    "graphemesplit": "^2.3.0"
+    "graphemesplit": "^2.4.1"
   }
 }
