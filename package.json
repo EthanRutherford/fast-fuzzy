@@ -1,8 +1,9 @@
 {
   "name": "fast-fuzzy",
-  "version": "1.10.7",
+  "version": "1.10.8",
   "description": "Fast and tiny fuzzy-search utility",
   "main": "lib/fuzzy.js",
+  "types": "lib/fuzzy.d.ts",
   "exports": {
     "import": "./lib/fuzzy.mjs",
     "require": "./lib/fuzzy.js"
