@@ -1,8 +1,9 @@
 {
   "name": "fast-fuzzy",
-  "version": "1.10.7",
+  "version": "1.10.8",
   "description": "Fast and tiny fuzzy-search utility",
   "main": "lib/fuzzy.js",
+  "types": "lib/fuzzy.d.ts",
   "exports": {
     "import": "./lib/fuzzy.mjs",
     "require": "./lib/fuzzy.js"
@@ -42,7 +43,8 @@
     "eslint": "^7.2.0",
     "mocha": "^8.1.1",
     "rollup": "^2.16.1",
-    "rollup-plugin-babel": "^4.4.0"
+    "rollup-plugin-babel": "^4.4.0",
+    "rollup-plugin-copy": "^3.3.0"
   },
   "dependencies": {
     "graphemesplit": "^2.4.1"

@@ -1,4 +1,5 @@
 import babel from "rollup-plugin-babel";
+import copy from "rollup-plugin-copy";
 
 export default {
 	input: "src/fuzzy.js",
@@ -9,5 +10,8 @@ export default {
 	external: ["graphemesplit"],
 	plugins: [
 		babel({exclude: ["node_modules/**"]}),
+		copy({targets: [
+			{src: "src/fuzzy.d.ts", dest: "lib"},
+		]}),
 	],
 };
