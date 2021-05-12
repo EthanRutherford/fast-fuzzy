@@ -1,6 +1,6 @@
 {
   "name": "fast-fuzzy",
-  "version": "1.10.8",
+  "version": "1.10.9",
   "description": "Fast and tiny fuzzy-search utility",
   "main": "lib/fuzzy.js",
   "types": "lib/fuzzy.d.ts",
@@ -36,9 +36,9 @@
   "homepage": "https://github.com/EthanRutherford/fast-fuzzy#readme",
   "browserslist": "> 1%, not ie > 0, not op_mini all",
   "devDependencies": {
-    "@babel/cli": "^7.10.1",
-    "@babel/core": "^7.10.2",
-    "@babel/preset-env": "^7.10.2",
+    "@babel/cli": "^7.13.16",
+    "@babel/core": "^7.14.0",
+    "@babel/preset-env": "^7.14.1",
     "@rutherford/eslint-config": "^1.0.3",
     "eslint": "^7.2.0",
     "mocha": "^8.1.1",
