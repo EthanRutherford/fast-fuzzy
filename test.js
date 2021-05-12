@@ -8,7 +8,7 @@ assert.greater = function greater(actual, expected, message) {
 	}
 };
 
-assert.less = function greater(actual, expected, message) {
+assert.less = function less(actual, expected, message) {
 	if (actual >= expected) {
 		assert.fail(actual, expected, message, "<", assert.fail);
 	}
