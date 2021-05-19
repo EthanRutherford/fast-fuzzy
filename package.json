@@ -1,52 +1,55 @@
 {
-  "name": "fast-fuzzy",
-  "version": "1.10.9",
-  "description": "Fast and tiny fuzzy-search utility",
-  "main": "lib/fuzzy.js",
-  "types": "lib/fuzzy.d.ts",
-  "exports": {
-    "import": "./lib/fuzzy.mjs",
-    "require": "./lib/fuzzy.js"
-  },
-  "scripts": {
-    "compile": "rollup -c",
-    "prepublishOnly": "npm run compile",
-    "pretest": "npm run compile",
-    "test": "mocha test.js"
-  },
-  "keywords": [
-    "fast",
-    "fuzzy",
-    "search",
-    "damerau",
-    "levenshtein",
-    "unicode",
-    "partial",
-    "match"
-  ],
-  "author": "Ethan Rutherford",
-  "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/EthanRutherford/fast-fuzzy.git"
-  },
-  "bugs": {
-    "url": "https://github.com/EthanRutherford/fast-fuzzy/issues"
-  },
-  "homepage": "https://github.com/EthanRutherford/fast-fuzzy#readme",
-  "browserslist": "> 1%, not ie > 0, not op_mini all",
-  "devDependencies": {
-    "@babel/cli": "^7.13.16",
-    "@babel/core": "^7.14.0",
-    "@babel/preset-env": "^7.14.1",
-    "@rutherford/eslint-config": "^1.0.3",
-    "eslint": "^7.2.0",
-    "mocha": "^8.1.1",
-    "rollup": "^2.16.1",
-    "rollup-plugin-babel": "^4.4.0",
-    "rollup-plugin-copy": "^3.3.0"
-  },
-  "dependencies": {
-    "graphemesplit": "^2.4.1"
-  }
+	"name": "fast-fuzzy",
+	"version": "1.10.10",
+	"description": "Fast and tiny fuzzy-search utility",
+	"main": "lib/fuzzy.js",
+	"types": "lib/fuzzy.d.ts",
+	"author": "Ethan Rutherford",
+	"license": "ISC",
+	"homepage": "https://github.com/EthanRutherford/fast-fuzzy#readme",
+	"browserslist": "> 1%, not ie > 0, not op_mini all",
+	"exports": {
+		"./package.json": "./package.json",
+		".": {
+			"import": "./lib/fuzzy.mjs",
+			"require": "./lib/fuzzy.js"
+		}
+	},
+	"scripts": {
+		"compile": "rollup -c",
+		"prepublishOnly": "npm run compile",
+		"pretest": "npm run compile",
+		"test": "mocha test.js"
+	},
+	"keywords": [
+		"fast",
+		"fuzzy",
+		"search",
+		"damerau",
+		"levenshtein",
+		"unicode",
+		"partial",
+		"match"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/EthanRutherford/fast-fuzzy.git"
+	},
+	"bugs": {
+		"url": "https://github.com/EthanRutherford/fast-fuzzy/issues"
+	},
+	"devDependencies": {
+		"@babel/cli": "^7.13.16",
+		"@babel/core": "^7.14.0",
+		"@babel/preset-env": "^7.14.1",
+		"@rutherford/eslint-config": "^1.0.3",
+		"eslint": "^7.2.0",
+		"mocha": "^8.1.1",
+		"rollup": "^2.16.1",
+		"rollup-plugin-babel": "^4.4.0",
+		"rollup-plugin-copy": "^3.3.0"
+	},
+	"dependencies": {
+		"graphemesplit": "^2.4.1"
+	}
 }
