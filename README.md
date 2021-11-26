@@ -64,6 +64,7 @@ impact on responsiveness if you intend to update search results in real time, i.
 | returnMatchData | `Bool` | return match data<sup>5</sup> | `false`
 | useDamerau | `Bool` | use damerau-levenshtein distance | `true`
 | useSellers | `Bool` | use the Sellers method for substring matching | `true`
+| sortBy | `sortKind` | defines which order results are returned in<sup>6</sup> | `bestMatch`
 
 <sup>3</sup> if the keySelector returns an array, the candidate will take the score of the highest scoring key.
 
@@ -73,7 +74,9 @@ impact on responsiveness if you intend to update search results in real time, i.
 Match index and length are in terms of the original, non-normalized string.
 Also note that `match` will be `undefined` if `useSellers` is `false`.
 
-`fuzzy` accepts a subset of these options (excluding keySelector and threshold) with the same defaults.
+<sup>6</sup> the supported sortKinds are `insertOrder` and `bestMatch`
+
+`fuzzy` accepts a subset of these options (excluding keySelector, threshold, and sortBy) with the same defaults.
 
 ## examples
 You can call `fuzzy` directly to get a match score for a single string

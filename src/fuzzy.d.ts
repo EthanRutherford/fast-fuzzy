@@ -1,4 +1,9 @@
 declare module 'fast-fuzzy' {
+	export enum sortKind {
+		insertOrder = "insertOrder",
+		bestMatch = "bestMatch",
+	};
+
 	interface FuzzyOptions {
 		ignoreCase?: boolean,
 		ignoreSymbols?: boolean,
@@ -6,6 +11,7 @@ declare module 'fast-fuzzy' {
 		useDamerau?: boolean,
 		useSellers?: boolean,
 		returnMatchData?: boolean,
+		sortBy?: sortKind,
 	}
 
 	interface AdditionalOptions<T> {

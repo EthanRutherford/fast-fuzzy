@@ -1,256 +1,254 @@
 /* global describe, it */
-const assert = require("assert");
-const {fuzzy, search, Searcher} = require("./lib/fuzzy");
-
-assert.greater = function greater(actual, expected, message) {
-	if (actual <= expected) {
-		assert.fail(actual, expected, message, ">", assert.fail);
-	}
-};
-
-assert.less = function less(actual, expected, message) {
-	if (actual >= expected) {
-		assert.fail(actual, expected, message, "<", assert.fail);
-	}
-};
+const expect = require("expect");
+const {sortKind, fuzzy, search, Searcher} = require("./lib/fuzzy");
 
 describe("fuzzy", function() {
 	it("should score exact matches perfectly", function() {
-		assert.equal(fuzzy("hello", "hello"), 1);
-		assert.equal(fuzzy("goodbye", "goodbye"), 1);
+		expect(fuzzy("hello", "hello")).toBe(1);
+		expect(fuzzy("goodbye", "goodbye")).toBe(1);
 	});
 
 	it("should score exact substring matches perfectly", function() {
-		assert.equal(fuzzy("hello", "hello there"), 1);
-		assert.equal(fuzzy("goodbye", "well, goodbye then"), 1);
+		expect(fuzzy("hello", "hello there")).toBe(1);
+		expect(fuzzy("goodbye", "well, goodbye then")).toBe(1);
 	});
 
 	it("should score close matches highly", function() {
-		assert.greater(fuzzy("help", "hello"), .5);
-		assert.greater(fuzzy("goodie", "goodbye"), .5);
+		expect(fuzzy("help", "hello")).toBeGreaterThan(.5);
+		expect(fuzzy("goodie", "goodbye")).toBeGreaterThan(.5);
 	});
 
 	it("should score poor matches poorly", function() {
-		assert.less(fuzzy("hello", "goodbye"), .5);
-		assert.less(fuzzy("goodbye", "hello"), .5);
+		expect(fuzzy("hello", "goodbye")).toBeLessThan(.5);
+		expect(fuzzy("goodbye", "hello")).toBeLessThan(.5);
 	});
 
 	it("should score non-matches minimally", function() {
-		assert.equal(fuzzy("hello", "pigs and stuff"), 0);
-		assert.equal(fuzzy("goodbye", "cars plus trucks"), 0);
+		expect(fuzzy("hello", "pigs and stuff")).toBe(0);
+		expect(fuzzy("goodbye", "cars plus trucks")).toBe(0);
 	});
 
 	it("should return perfect scores for empty search terms", function() {
-		assert.equal(fuzzy("", "anything"), 1);
+		expect(fuzzy("", "anything")).toBe(1);
 	});
 
 	it("should return minimum scores for empty candidates", function() {
-		assert.equal(fuzzy("nothing", ""), 0);
+		expect(fuzzy("nothing", "")).toBe(0);
 	});
 
 	it("should handle unicode well", function() {
 		// unicode characters are normalized
-		assert.equal(fuzzy("\u212B", "\u0041\u030A"), 1);
+		expect(fuzzy("\u212B", "\u0041\u030A")).toBe(1);
 		// handles high and low surrogates as single characters
-		assert.equal(fuzzy("high", "h💩gh"), .75);
+		expect(fuzzy("high", "h💩gh")).toBe(.75);
 		// handles combining marks as single characters
-		assert.equal(fuzzy("hi zalgo hello hello", "hi Z͑ͫ̓ͪ̂ͫ̽͏̴̙̤̞͉͚̯̞̠͍A̴̵̜̰͔ͫ͗͢L̠ͨͧͩ͘G̴̻͈͍͔̹̑͗̎̅͛́Ǫ̵̹̻̝̳͂̌̌͘ hello hello"), .75);
+		expect(fuzzy("hi zalgo hello hello", "hi Z͑ͫ̓ͪ̂ͫ̽͏̴̙̤̞͉͚̯̞̠͍A̴̵̜̰͔ͫ͗͢L̠ͨͧͩ͘G̴̻͈͍͔̹̑͗̎̅͛́Ǫ̵̹̻̝̳͂̌̌͘ hello hello")).toBe(.75);
 
 		// handles graphemes such as hangul jamo and joined emoji as single characters
-		assert.equal(fuzzy("high", "h깍👨‍👩‍👧‍👦h"), .5);
+		expect(fuzzy("high", "h깍👨‍👩‍👧‍👦h")).toBe(.5);
 	});
 
 	describe("options", function() {
 		it("should have different results when ignoreCase is set", function() {
-			assert.greater(
+			expect(
 				fuzzy("hello", "HELLO", {ignoreCase: true}),
+			).toBeGreaterThan(
 				fuzzy("hello", "HELLO", {ignoreCase: false}),
 			);
 		});
 
 		it("should have different results when ignoreSymbols is set", function() {
-			assert.greater(
+			expect(
 				fuzzy("hello", "h..e..l..l..o", {ignoreSymbols: true}),
+			).toBeGreaterThan(
 				fuzzy("hello", "h..e..l..l..o", {ignoreSymbols: false}),
 			);
 		});
 
 		it("should have different results when normalizeWhitespace is set", function() {
-			assert.greater(
+			expect(
 				fuzzy("a b c d", "a  b  c  d", {normalizeWhitespace: true}),
+			).toBeGreaterThan(
 				fuzzy("a b c d", "a  b  c  d", {normalizeWhitespace: false}),
 			);
 		});
 
 		it("should have different results when useDamerau is set", function() {
-			assert.equal(fuzzy("abcd", "acbd", {useDamerau: false}), .5);
-			assert.equal(fuzzy("abcd", "acbd", {useDamerau: true}), .75);
+			expect(fuzzy("abcd", "acbd", {useDamerau: false})).toBe(.5);
+			expect(fuzzy("abcd", "acbd", {useDamerau: true})).toBe(.75);
 		});
 
 		it("should return match data when returnMatchData is set", function() {
-			assert.deepEqual(
-				fuzzy("abcd", "acbd", {returnMatchData: true}),
-				{
-					item: "acbd",
-					original: "acbd",
-					key: "acbd",
-					score: .75,
-					match: {index: 0, length: 4},
-				},
-			);
+			expect(fuzzy("abcd", "acbd", {returnMatchData: true})).toEqual({
+				item: "acbd",
+				original: "acbd",
+				key: "acbd",
+				score: .75,
+				match: {index: 0, length: 4},
+			});
 		});
 
 		it("should map matches to their original positions", function() {
-			assert.deepEqual(
-				fuzzy("hello", "  h..e..l..l  ..o", {returnMatchData: true}),
-				{
-					item: "  h..e..l..l  ..o",
-					original: "  h..e..l..l  ..o",
-					key: "hell o",
-					score: .8,
-					match: {index: 2, length: 10},
-				},
-			);
+			expect(fuzzy("hello", "  h..e..l..l  ..o", {returnMatchData: true})).toEqual({
+				item: "  h..e..l..l  ..o",
+				original: "  h..e..l..l  ..o",
+				key: "hell o",
+				score: .8,
+				match: {index: 2, length: 10},
+			});
 		});
 
 		it("should allow normal levenshtein", function() {
 			const options = {useSellers: false};
-			assert.equal(fuzzy("hello", "hello", options), 1);
-			assert.equal(fuzzy("hello", "he", options), .4);
-			assert.equal(fuzzy("he", "hello", options), .4);
+			expect(fuzzy("hello", "hello", options)).toBe(1);
+			expect(fuzzy("hello", "he", options)).toBe(.4);
+			expect(fuzzy("he", "hello", options)).toBe(.4);
 		});
 	});
 });
 
 describe("search", function() {
 	it("should filter out low matches", function() {
-		assert.deepEqual(
-			search("hello", ["goodbye"]),
-			[],
-		);
+		expect(search("hello", ["goodbye"])).toEqual([]);
 	});
 
 	it("should have good relative ordering", function() {
 		// test order by closeness of match
-		assert.deepEqual(
+		expect(
 			search("item", ["items", "iterator", "itemize", "item", "temperature"]),
+		).toEqual(
 			["item", "items", "itemize", "iterator", "temperature"],
 		);
 
 		// test order by earliness of match
-		assert.deepEqual(
+		expect(
 			search("item", ["lineitem", "excitement", "itemize", "item"]),
+		).toEqual(
 			["item", "itemize", "excitement", "lineitem"],
 		);
 	});
 
 	it("should handle empty candidates", function() {
-		assert.doesNotThrow(() => search("x", [""]));
+		expect(() => search("x", [""])).not.toThrow();
 	});
 
 	it("should handle unicode well", function() {
 		const options = {returnMatchData: true};
 		const tSearch = (a, b) => search(a, [b], options)[0].score;
 		// unicode characters are normalized
-		assert.equal(tSearch("\u212B", "\u0041\u030A"), 1);
+		expect(tSearch("\u212B", "\u0041\u030A")).toBe(1);
 		// handles high and low surrogates as single characters
-		assert.equal(tSearch("high", "h💩gh"), .75);
+		expect(tSearch("high", "h💩gh")).toBe(.75);
 		// handles combining marks as single characters
-		assert.equal(tSearch("hi zalgo hello hello", "hi Z͑ͫ̓ͪ̂ͫ̽͏̴̙̤̞͉͚̯̞̠͍A̴̵̜̰͔ͫ͗͢L̠ͨͧͩ͘G̴̻͈͍͔̹̑͗̎̅͛́Ǫ̵̹̻̝̳͂̌̌͘ hello hello"), .75);
+		expect(tSearch("hi zalgo hello hello", "hi Z͑ͫ̓ͪ̂ͫ̽͏̴̙̤̞͉͚̯̞̠͍A̴̵̜̰͔ͫ͗͢L̠ͨͧͩ͘G̴̻͈͍͔̹̑͗̎̅͛́Ǫ̵̹̻̝̳͂̌̌͘ hello hello")).toBe(.75);
 
 		// handles graphemes such as hangul jamo and joined emoji as single characters
-		assert.equal(tSearch("abcde", "abc깍👨‍👩‍👧‍👦"), .6);
+		expect(tSearch("abcde", "abc깍👨‍👩‍👧‍👦")).toBe(.6);
 	});
 
 	describe("options", function() {
 		// here we describe the search specific options
 		// the other options were tested with fuzzy
 		it("should work with objects when keySelector is provided", function() {
-			assert.throws(() => {
-				search("hello", [{name: "hello"}]);
-			});
-			assert.doesNotThrow(() => {
+			expect(() => search("hello", [{name: "hello"}])).toThrow();
+			expect(() => {
 				search("hello", [{name: "hello"}], {keySelector: (item) => item.name});
-			});
-			assert.deepEqual(
+			}).not.toThrow();
+			expect(
 				search("hello", [{name: "hello"}], {keySelector: (item) => item.name}),
+			).toEqual(
 				[{name: "hello"}],
 			);
 		});
 
 		it("should have good ordering when using multiple keys per object", function() {
-			assert.deepEqual(
+			expect(
 				search("grin", [["grinning", "grin"], ["grin", "grinning"]]),
+			).toEqual(
 				[["grin", "grinning"], ["grinning", "grin"]],
 			);
 
-			assert.deepEqual(
+			expect(
 				search("laugh", [["smile", "laughing"], ["laughing"], ["laugh"]]),
+			).toEqual(
 				[["laugh"], ["laughing"], ["smile", "laughing"]],
 			);
 		});
 
 		it("should handle searching multiple keys per object", function() {
-			assert.doesNotThrow(() => {
+			expect(() => {
 				search(
 					"hello",
 					[{name: "hello", value: "world"}],
 					{keySelector: (item) => [item.name, item.value]},
 				);
-			});
-			assert.deepEqual(
-				search(
-					"hello",
-					[
-						{name: "hello", value: "jell"},
-						{name: "world", value: "hello"},
-					],
-					{keySelector: (item) => [item.name, item.value]},
-				),
+			}).not.toThrow();
+			expect(search(
+				"hello",
+				[
+					{name: "hello", value: "jell"},
+					{name: "world", value: "hello"},
+				],
+				{keySelector: (item) => [item.name, item.value]},
+			)).toEqual(
 				[{name: "hello", value: "jell"}, {name: "world", value: "hello"}],
 			);
 		});
 
 		it("should have more results when threshold is lower", function() {
-			assert.greater(
+			expect(
 				search("aaa", ["aaa", "aab", "abb", "bbb"], {threshold: .3}).length,
+			).toBeGreaterThan(
 				search("aaa", ["aaa", "aab", "abb", "bbb"], {threshold: .7}).length,
 			);
 		});
 
 		it("should return match data when returnMatchData is set", function() {
-			assert.equal(
-				search("hello", ["hello"])[0].score,
-				null,
-			);
-			assert.deepEqual(
+			expect(search("hello", ["hello"])[0].score).toBeUndefined();
+			expect(
 				search("hello", ["hello"], {returnMatchData: true})[0],
-				{
-					item: "hello",
-					original: "hello",
-					key: "hello",
-					score: 1,
-					match: {index: 0, length: 5},
-				},
-			);
+			).toEqual({
+				item: "hello",
+				original: "hello",
+				key: "hello",
+				score: 1,
+				match: {index: 0, length: 5},
+			});
 		});
 
 		it("should allow normal levenshtein", function() {
 			const options = {useSellers: false};
 			const candidates = ["items", "iterator", "itemize", "item", "temperature", "myitem"];
-			assert.deepEqual(
+			expect(
 				search("item", candidates, options),
+			).toEqual(
 				["item", "items", "myitem"],
 			);
 
-			assert.deepEqual(
+			expect(
 				search("345", ["12345"], options),
+			).toEqual(
 				["12345"],
 			);
 
-			assert.deepEqual(
+			expect(
 				search("12345", ["345"], options),
+			).toEqual(
 				["345"],
+			);
+		});
+
+		it("should allow changing sortBy", function() {
+			const candidates = ["hi there", "hello there"];
+			expect(
+				search("hello there", candidates, {sortBy: sortKind.bestMatch}),
+			).toEqual(
+				["hello there", "hi there"],
+			);
+			expect(
+				search("hello there", candidates, {sortBy: sortKind.insertOrder}),
+			).toEqual(
+				["hi there", "hello there"],
 			);
 		});
 	});
@@ -259,46 +257,37 @@ describe("search", function() {
 describe("Searcher", function() {
 	it("should return the same results as search", function() {
 		const searcher = new Searcher(["hello", "help", "goodbye"]);
-		assert.deepEqual(
+		expect(
 			search("hello", ["hello", "help", "goodbye"]),
+		).toEqual(
 			searcher.search("hello"),
 		);
 	});
 
 	it("should work more than once", function() {
 		const searcher = new Searcher(["aaa", "aab", "abb", "bbb"]);
-		assert.deepEqual(
-			searcher.search("aaa"),
-			["aaa", "aab"],
-		);
-		assert.deepEqual(
-			searcher.search("bbb"),
-			["bbb", "abb"],
-		);
-		assert.deepEqual(
-			searcher.search("ccc"),
-			[],
-		);
+		expect(searcher.search("aaa")).toEqual(["aaa", "aab"]);
+		expect(searcher.search("bbb")).toEqual(["bbb", "abb"]);
+		expect(searcher.search("ccc")).toEqual([]);
 	});
 
 	it("should have different behavior with different options", function() {
 		// we only really have to test one option, as the more strict
 		// tests are handled in search/fuzzy
 		// this is really just making sure the options are set
-		assert.deepEqual(
-			new Searcher(["HELLO"], {ignoreCase: false}).search("hello"),
-			[],
-		);
-		assert.deepEqual(
+		expect(new Searcher(["HELLO"], {ignoreCase: false}).search("hello")).toEqual([]);
+		expect(
 			new Searcher(["HELLO"], {ignoreCase: true}).search("hello"),
+		).toEqual(
 			["HELLO"],
 		);
 	});
 
 	it("should allow overriding threshold", function() {
 		const searcher = new Searcher(["aaa", "aab", "abb", "bbb"], {threshold: .3});
-		assert.greater(
+		expect(
 			searcher.search("aaa").length,
+		).toBeGreaterThan(
 			searcher.search("aaa", {threshold: .7}).length,
 		);
 	});

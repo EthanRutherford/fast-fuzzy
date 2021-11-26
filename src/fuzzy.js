@@ -3,6 +3,11 @@ import split from "graphemesplit";
 const whitespaceRegex = /^\s+$/;
 const nonWordRegex = /^[`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+$/;
 
+export const sortKind = {
+	insertOrder: "insertOrder",
+	bestMatch: "bestMatch",
+};
+
 // the default options, which will be used for any unset option
 const defaultOptions = {
 	keySelector: (s) => s,
@@ -13,6 +18,7 @@ const defaultOptions = {
 	returnMatchData: false,
 	useDamerau: true,
 	useSellers: true,
+	sortBy: sortKind.bestMatch,
 };
 
 const noop = () => {};
@@ -244,7 +250,7 @@ function createSearchTrie(trie, index, items, options) {
 }
 
 // scored item comparator
-function compareItems(a, b) {
+function compareItemsBestScore(a, b) {
 	// highest priority is raw levenshtein score
 	const scoreDiff = b.score - a.score;
 	if (scoreDiff !== 0) {
@@ -270,11 +276,23 @@ function compareItems(a, b) {
 	}
 
 	// if all else fails, resort to insertion order
+	return compareItemsInsertOrder(a, b);
+}
+
+function compareItemsInsertOrder(a, b) {
 	return a.index - b.index;
 }
 
+function getCompareFunc(sortBy) {
+	switch (sortBy) {
+		case sortKind.bestMatch: return compareItemsBestScore;
+		case sortKind.insertOrder: return compareItemsInsertOrder;
+		default: throw new Error(`unknown sortBy method ${sortBy}`);
+	}
+}
+
 // dedupes and adds results to the results list/map
-function addResult(results, resultMap, candidate, score, match, lengthDiff) {
+function addResult(results, resultMap, candidate, score, match, lengthDiff, compareItems) {
 	const scoredItem = {
 		item: candidate.item,
 		normalized: candidate.normalized,
@@ -356,6 +374,7 @@ function searchRecurse(trie, term, scoreMethods, rows, results, resultMap, optio
 						score,
 						match,
 						lengthDiff,
+						scoreMethods.compareItems,
 					);
 				}
 			}
@@ -382,6 +401,7 @@ function searchCore(term, trie, options) {
 		shouldUpdateScore: options.useSellers ? sellersUpdateScore : levUpdateScore,
 		shouldContinue: options.useSellers ? sellersShouldContinue : levShouldContinue,
 		walkBack: options.useSellers ? walkBack : noopWalkback,
+		compareItems: getCompareFunc(options.sortBy),
 	};
 
 	// walk the trie, scoring and storing the candidates
@@ -398,13 +418,14 @@ function searchCore(term, trie, options) {
 				0,
 				{index: 0, length: 0},
 				term.length,
+				scoreMethods.compareItems,
 			);
 		}
 	}
 
 	searchRecurse(trie, term, scoreMethods, rows, results, resultMap, options);
 
-	const sorted = results.sort(compareItems);
+	const sorted = results.sort(scoreMethods.compareItems);
 
 	if (options.returnMatchData) {
 		const denormalize = options.useSellers ? denormalizeMatchPosition : noop;
