@@ -2,7 +2,7 @@ declare module 'fast-fuzzy' {
 	export enum sortKind {
 		insertOrder = "insertOrder",
 		bestMatch = "bestMatch",
-	};
+	}
 
 	interface FuzzyOptions {
 		ignoreCase?: boolean,
