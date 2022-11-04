@@ -43,9 +43,22 @@ describe("fuzzy", function() {
 		expect(fuzzy("high", "h💩gh")).toBe(.75);
 		// handles combining marks as single characters
 		expect(fuzzy("hi zalgo hello hello", "hi Z͑ͫ̓ͪ̂ͫ̽͏̴̙̤̞͉͚̯̞̠͍A̴̵̜̰͔ͫ͗͢L̠ͨͧͩ͘G̴̻͈͍͔̹̑͗̎̅͛́Ǫ̵̹̻̝̳͂̌̌͘ hello hello")).toBe(.75);
-
 		// handles graphemes such as hangul jamo and joined emoji as single characters
 		expect(fuzzy("high", "h깍👨‍👩‍👧‍👦h")).toBe(.5);
+	});
+
+	it("should handle unicode well(with useSeparatedUnicode)", function() {
+		const options = {useSeparatedUnicode: true};
+		// unicode characters are normalized
+		expect(fuzzy("\u212B", "\u0041\u030A", options)).toBe(1);
+		// handles high and low surrogates as multiple characters
+		expect(fuzzy("high", "h💩gh", options)).toBe(.5);
+		// handles combining marks as single characters
+		expect(fuzzy("hi zalgo hello hello", "hi Z͑ͫ̓ͪ̂ͫ̽͏̴̙̤̞͉͚̯̞̠͍A̴̵̜̰͔ͫ͗͢L̠ͨͧͩ͘G̴̻͈͍͔̹̑͗̎̅͛́Ǫ̵̹̻̝̳͂̌̌͘ hello hello", options)).toBe(.6);
+		// handles graphemes such as hangul jamo and joined emoji as multiple characters
+		expect(fuzzy("high", "h깍👨‍👩‍👧‍👦h", options)).toBe(.25);
+		// handles hangul jamo as multiple characters
+		expect(fuzzy("ㅅㄹ", "사랑", options)).toBe(.5);
 	});
 
 	describe("options", function() {
@@ -141,9 +154,23 @@ describe("search", function() {
 		expect(tSearch("high", "h💩gh")).toBe(.75);
 		// handles combining marks as single characters
 		expect(tSearch("hi zalgo hello hello", "hi Z͑ͫ̓ͪ̂ͫ̽͏̴̙̤̞͉͚̯̞̠͍A̴̵̜̰͔ͫ͗͢L̠ͨͧͩ͘G̴̻͈͍͔̹̑͗̎̅͛́Ǫ̵̹̻̝̳͂̌̌͘ hello hello")).toBe(.75);
-
 		// handles graphemes such as hangul jamo and joined emoji as single characters
 		expect(tSearch("abcde", "abc깍👨‍👩‍👧‍👦")).toBe(.6);
+	});
+
+	it("should handle unicode well(with useSeparatedUnicode)", function() {
+		const options = {returnMatchData: true, useSeparatedUnicode: true, threshold: 0.5};
+		const tSearch = (a, b) => search(a, [b], options)[0].score;
+		// unicode characters are normalized
+		expect(tSearch("\u212B", "\u0041\u030A")).toBe(1);
+		// handles high and low surrogates as multiple characters
+		expect(tSearch("high", "h💩gh")).toBe(.5);
+		// handles combining marks as multiple characters
+		expect(tSearch("hi zalgo hello hello", "hi Z͑ͫ̓ͪ̂ͫ̽͏̴̙̤̞͉͚̯̞̠͍A̴̵̜̰͔ͫ͗͢L̠ͨͧͩ͘G̴̻͈͍͔̹̑͗̎̅͛́Ǫ̵̹̻̝̳͂̌̌͘ hello hello")).toBe(.6);
+		// handles graphemes such as hangul jamo and joined emoji as multiple characters
+		expect(tSearch("abcde", "abc깍👨‍👩‍👧‍👦")).toBe(.6);
+		// handles hangul jamo as multiple characters
+		expect(tSearch("ㅅㄹ", "사랑")).toBe(.5);
 	});
 
 	describe("options", function() {

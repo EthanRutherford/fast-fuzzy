@@ -64,6 +64,7 @@ impact on responsiveness if you intend to update search results in real time, i.
 | returnMatchData | `Bool` | return match data<sup>5</sup> | `false`
 | useDamerau | `Bool` | use damerau-levenshtein distance | `true`
 | useSellers | `Bool` | use the Sellers method for substring matching | `true`
+| useSeparatedUnicode | `Bool` | use separated unicode | `false`
 | sortBy | `sortKind` | defines which order results are returned in<sup>6</sup> | `bestMatch`
 
 <sup>3</sup> if the keySelector returns an array, the candidate will take the score of the highest scoring key.
