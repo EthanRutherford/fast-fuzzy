@@ -10,6 +10,7 @@ declare module 'fast-fuzzy' {
 		normalizeWhitespace?: boolean,
 		useDamerau?: boolean,
 		useSellers?: boolean,
+		useSeparatedUnicode?: boolean,
 		returnMatchData?: boolean,
 		sortBy?: sortKind,
 	}

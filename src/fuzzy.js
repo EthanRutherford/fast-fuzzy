@@ -1,5 +1,7 @@
 import split from "graphemesplit";
 
+const splitUnicode = (str) => str.normalize("NFKD").split("");
+
 const whitespaceRegex = /^\s+$/;
 const nonWordRegex = /^[`~!@#$%^&*()\-=_+{}[\]\|\\;':",./<>?]+$/;
 
@@ -18,6 +20,7 @@ const defaultOptions = {
 	returnMatchData: false,
 	useDamerau: true,
 	useSellers: true,
+	useSeparatedUnicode: false,
 	sortBy: sortKind.bestMatch,
 };
 
@@ -33,7 +36,10 @@ function normalize(string, options) {
 	const map = [];
 	let lastWasWhitespace = true;
 	let length = 0;
-	for (const grapheme of split(lower)) {
+
+	const graphemeList = options.useSeparatedUnicode ? splitUnicode(lower) : split(lower);
+
+	for (const grapheme of graphemeList) {
 		whitespaceRegex.lastIndex = 0;
 		nonWordRegex.lastIndex = 0;
 		if (options.normalizeWhitespace && whitespaceRegex.test(grapheme)) {
@@ -43,7 +49,11 @@ function normalize(string, options) {
 				lastWasWhitespace = true;
 			}
 		} else if (!(options.ignoreSymbols && nonWordRegex.test(grapheme))) {
-			normal.push(grapheme.normalize());
+			if (options.useSeparatedUnicode) {
+				normal.push(grapheme);
+			} else {
+				normal.push(grapheme.normalize());
+			}
 			map.push(length);
 			lastWasWhitespace = false;
 		}
